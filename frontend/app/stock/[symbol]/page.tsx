@@ -52,9 +52,9 @@ export default function StockNewsPage() {
     <div>
       {/* 페이지 헤더 */}
       <div className="mb-6">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-bold text-slate-900">{upper}</h1>
-          {data && <span className="text-slate-500">{data.company_name}</span>}
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{upper}</h1>
+          {data && <span className="text-sm sm:text-base text-slate-500">{data.company_name}</span>}
         </div>
         {data && (
           <p className="text-xs text-slate-400 mt-1">

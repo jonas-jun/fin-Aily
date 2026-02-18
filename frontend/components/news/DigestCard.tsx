@@ -23,8 +23,8 @@ export function DigestCard({ digest, symbol, articles }: Props) {
   return (
     <div className={`rounded-xl border p-5 mb-6 ${showSentiment ? sentimentBgClass(sentiment.label) : "bg-white"}`}>
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-base">📝</span>
           <h2 className="font-semibold text-slate-800 text-sm">Yahoo Finance 최신 뉴스 AI 요약</h2>
           <span className="text-xs text-slate-400">

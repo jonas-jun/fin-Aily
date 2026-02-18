@@ -72,7 +72,7 @@ export function TickerSearch() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="티커 검색 (예: AAPL, TSLA)"
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 sm:py-2.5 text-base sm:text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           {loading && (
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
@@ -82,7 +82,7 @@ export function TickerSearch() {
         </div>
         <button
           type="submit"
-          className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          className="rounded-lg bg-blue-600 px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium text-white hover:bg-blue-700 active:bg-blue-800 transition-colors"
         >
           검색
         </button>
@@ -96,7 +96,7 @@ export function TickerSearch() {
               <button
                 type="button"
                 onClick={() => handleSelect(r.symbol)}
-                className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-slate-50 transition-colors"
+                className="flex w-full items-center justify-between px-4 py-3 sm:py-2.5 text-left text-sm hover:bg-slate-50 active:bg-slate-100 transition-colors"
               >
                 <span className="font-semibold text-slate-900">{r.symbol}</span>
                 <span className="text-slate-500 truncate max-w-[200px]">{r.name}</span>

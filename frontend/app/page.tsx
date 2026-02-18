@@ -41,9 +41,9 @@ export default function HomePage() {
     <div className="flex min-h-[70vh] flex-col items-center pt-16 md:pt-24 gap-10 px-4">
       {/* 히어로 섹션 */}
       <div className="text-center space-y-3">
-        <div className="text-5xl mb-4">📈</div>
-        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">fin-Aily</h1>
-        <p className="text-slate-500 text-base max-w-md mx-auto leading-relaxed">
+        <div className="text-4xl sm:text-5xl mb-4">📈</div>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">fin-Aily</h1>
+        <p className="text-slate-500 text-sm sm:text-base max-w-md mx-auto leading-relaxed">
           {activeTab === "brief" 
             ? "티커를 검색하면 AI가 최신 뉴스를 10개의 핵심 포인트로 요약해드립니다." 
             : "최신 주요 경제 소식을 AI 비서가 정리해드립니다."}
