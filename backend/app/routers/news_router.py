@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.config import get_settings
+from app.config import get_feature_config, get_settings
 from app.dependencies import get_db
 from app.services.article_cache_service import (
     get_cached_articles,
@@ -90,6 +90,7 @@ async def _get_or_fetch_articles(
 async def _get_or_summarize(
     db, ticker_id: int, symbol: str, company_name: str,
     articles: list[RawArticle], lang: str,
+    feature: str = "ticker_brief",
 ) -> DigestOut:
     """24h 요약 캐시가 있으면 사용하고, 없으면 AI 요약 후 캐시에 저장한다."""
     cached_digest = await get_cached_digest(db, ticker_id, lang)
@@ -104,9 +105,9 @@ async def _get_or_summarize(
         )
 
     settings = get_settings()
-    provider = settings.summarization_provider
+    feat_config = get_feature_config(feature)
     api_key = (
-        settings.gemini_api_key if provider == "gemini" else settings.anthropic_api_key
+        settings.gemini_api_key if feat_config.provider == "gemini" else settings.anthropic_api_key
     ) or None
 
     inputs = _build_article_inputs(articles)
@@ -116,7 +117,7 @@ async def _get_or_summarize(
         articles=inputs,
         lang=lang,
         api_key=api_key,
-        provider=provider,
+        feature=feature,
     )
 
     await save_digest_cache(db, ticker_id, digest)
@@ -158,7 +159,8 @@ async def get_market_pulse(
 
     try:
         digest_out = await _get_or_summarize(
-            db, ticker_id, "MARKET", "MarketWatch Top Stories", raw_articles, lang
+            db, ticker_id, "MARKET", "MarketWatch Top Stories", raw_articles, lang,
+            feature="market_pulse",
         )
     except Exception as exc:
         logger.error("Market Pulse 요약 실패: %s", exc)

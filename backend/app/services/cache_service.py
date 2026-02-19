@@ -12,11 +12,10 @@ from typing import Optional
 
 from supabase import AsyncClient
 
+from app.config import get_cache_config
 from app.services.summarization_service import DigestResult, SummaryPoint
 
 logger = logging.getLogger(__name__)
-
-CACHE_TTL_HOURS = 0.1
 
 
 async def get_cached_digest(
@@ -27,7 +26,7 @@ async def get_cached_digest(
     """
     유효한 캐시(TTL 이내)가 있으면 DigestResult를 반환하고, 없으면 None을 반환한다.
     """
-    cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=CACHE_TTL_HOURS)
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=get_cache_config().summary_ttl_hours)
 
     res = (
         await db.table("ticker_summaries")

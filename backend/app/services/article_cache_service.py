@@ -12,11 +12,10 @@ from typing import Optional
 
 from supabase import AsyncClient
 
+from app.config import get_cache_config
 from app.services.news_service import RawArticle
 
 logger = logging.getLogger(__name__)
-
-ARTICLE_CACHE_TTL_HOURS = 0.1
 
 
 async def get_or_create_ticker(
@@ -50,7 +49,7 @@ async def get_cached_articles(
     limit: int = 10,
 ) -> Optional[list[dict]]:
 
-    cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=ARTICLE_CACHE_TTL_HOURS)
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=get_cache_config().article_ttl_hours)
 
     res = (
         await db.table("news_articles")

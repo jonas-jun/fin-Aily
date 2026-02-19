@@ -14,14 +14,13 @@ import anthropic
 import google.generativeai as genai
 from pydantic import BaseModel
 
+from app.config import get_feature_config
+
 logger = logging.getLogger(__name__)
 
 MAX_ARTICLES        = 10
 MAX_CONTENT_CHARS   = 1024
 MAX_SUMMARY_BULLETS = 10
-
-CLAUDE_MODEL  = "claude-3-5-sonnet-20240620"
-GEMINI_MODEL  = "gemini-2.0-flash"
 
 class ArticleInput(BaseModel):
     id: int
@@ -144,30 +143,31 @@ async def summarize_articles(
     articles: list[ArticleInput],
     lang: str = "ko",
     api_key: Optional[str] = None,
-    provider: str = "gemini",
+    feature: str = "ticker_brief",
 ) -> DigestResult:
     if not articles:
         raise ValueError("기사가 없습니다.")
 
+    feat_config = get_feature_config(feature)
     prompt = _build_prompt(symbol, company_name, articles[:MAX_ARTICLES], lang)
-    
-    if provider == "gemini":
+
+    if feat_config.provider == "gemini":
         if api_key: genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(GEMINI_MODEL)
+        model = genai.GenerativeModel(feat_config.model)
         response = await model.generate_content_async(prompt)
-        raw_text, model_version = response.text, GEMINI_MODEL
+        raw_text, model_version = response.text, feat_config.model
     else:
         client = anthropic.AsyncAnthropic(api_key=api_key)
         message = await client.messages.create(
-            model=CLAUDE_MODEL,
-            max_tokens=1024,
+            model=feat_config.model,
+            max_tokens=feat_config.max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw_text, model_version = message.content[0].text, CLAUDE_MODEL
+        raw_text, model_version = message.content[0].text, feat_config.model
 
     parsed = _parse_llm_response(raw_text)
     bullets = [SummaryPoint(**b) for b in parsed.get("summary", [])]
-    
+
     return DigestResult(
         summary=bullets,
         sentiment_score=parsed.get("sentiment_score", 0.0),

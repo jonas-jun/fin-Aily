@@ -1,0 +1,25 @@
+# ── 캐시 TTL 설정 (단위: 시간) ────────────────────────────────────────────────
+cache:
+  article_ttl_hours: 0.5 # 기사 캐시 (0.1h = 6분)
+  summary_ttl_hours: 0.5 # 요약 캐시 (0.1h = 6분)
+
+# ── 기능별 AI 모델 설정 ──────────────────────────────────────────────────────
+# provider: "gemini" | "claude"
+# model: 사용할 모델 ID
+# max_tokens: 최대 출력 토큰 수
+
+features:
+  market_pulse:
+    provider: gemini
+    model: gemini-2.5-flash-lite
+    max_tokens: 1024
+
+  ticker_brief:
+    provider: gemini
+    model: gemini-2.5-flash-lite
+    max_tokens: 1024
+
+defaults:
+  provider: gemini
+  model: gemini-2.5-flash
+  max_tokens: 1024

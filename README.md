@@ -28,7 +28,7 @@
 ### Backend
 * **Framework**: Python FastAPI
 * **Data Sourcing**: yfinance, Feedparser (RSS)
-* **AI Engine**: Google Gemini 2.0 Flash, Anthropic Claude 3.5 Sonnet
+* **AI Engine**: Google Gemini 2.5 Flash / Flash Lite, Anthropic Claude (YAML 기반 기능별 모델 설정)
 * **Database**: Supabase (PostgreSQL)
 
 ---
@@ -58,8 +58,39 @@ GEMINI_API_KEY=your_gemini_api_key
 
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_KEY=your_supabase_anon_key
-SUMMARIZATION_PROVIDER=gemini  # 또는 claude
 ```
+
+**AI 모델 및 캐시 설정 (`/backend/app/model_config.yaml`)**
+
+기능별 AI 모델과 캐시 TTL을 YAML 파일 하나로 관리합니다. 코드 수정 없이 모델 교체 및 캐시 주기 조정이 가능합니다.
+
+```yaml
+# 캐시 TTL 설정 (단위: 시간)
+cache:
+  article_ttl_hours: 0.5   # 기사 캐시
+  summary_ttl_hours: 0.5   # 요약 캐시
+
+# 기능별 AI 모델 설정
+# provider: "gemini" | "claude"
+features:
+  market_pulse:
+    provider: gemini
+    model: gemini-2.5-flash-lite
+    max_tokens: 1024
+
+  ticker_brief:
+    provider: gemini
+    model: gemini-2.5-flash-lite
+    max_tokens: 1024
+
+# 신규 기능 추가 시 fallback 기본값
+defaults:
+  provider: gemini
+  model: gemini-2.5-flash
+  max_tokens: 1024
+```
+
+> **참고**: 기능별로 다른 provider를 사용할 수 있습니다. 예를 들어 Market Pulse는 `gemini`, Ticker Brief는 `claude`로 설정 가능합니다.
 
 **Frontend (`/frontend/.env.local`)**
 ```env
@@ -117,6 +148,8 @@ inv_secretary/
 └── backend/                 # FastAPI 기반 뉴스 분석 서버
     ├── app/
     │   ├── main.py          # FastAPI 서버 진입점 및 미들웨어 설정
+    │   ├── config.py        # 환경 변수 및 YAML 설정 로딩
+    │   ├── model_config.yaml # 기능별 AI 모델 및 캐시 TTL 설정
     │   ├── routers/         # API 엔드포인트 정의 (news, tickers 등)
     │   └── services/        # 핵심 비즈니스 로직
     │       ├── news_service.py           # yfinance 및 RSS 뉴스 수집
@@ -168,7 +201,7 @@ backend/migrations/001_initial_schema.sql
 | `users` | 사용자 확장 프로필 |
 | `tickers` | 종목 마스터 |
 | `news_articles` | 수집된 뉴스 원문 |
-| `ticker_summaries` | AI 종합 요약 캐시 (TTL 24h) |
+| `ticker_summaries` | AI 종합 요약 캐시 (TTL은 `model_config.yaml`에서 설정) |
 | `guest_rate_limits` | 비로그인 일일 조회 제한 |
 
 ### 3. 초기 종목 데이터 입력 (선택)
@@ -283,7 +316,7 @@ yfinance의 Yahoo Finance 의존성이 차단될 수 있습니다. `news_service
 
 **Q. LLM 응답이 JSON 형식이 아닌 경우**
 
-`summarization_service.py`의 `_build_prompt` 함수에서 "반드시 JSON만 출력" 지시가 있으나, 간혹 모델이 마크다운 펜스를 붙이는 경우가 있습니다. 이는 코드에서 자동으로 제거됩니다. 계속 문제가 되면 다른 provider로 전환해보세요 (`SUMMARIZATION_PROVIDER=gemini`), 또는 `summarization_service.py`의 `CLAUDE_MODEL`을 `claude-sonnet-4-5-20250929`로 올려보세요.
+`summarization_service.py`의 `_build_prompt` 함수에서 "반드시 JSON만 출력" 지시가 있으나, 간혹 모델이 마크다운 펜스를 붙이는 경우가 있습니다. 이는 코드에서 자동으로 제거됩니다. 계속 문제가 되면 `model_config.yaml`에서 해당 기능의 provider나 model을 변경해보세요.
 
 **Q. Supabase 무료 티어 용량 초과**
 
