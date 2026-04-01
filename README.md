@@ -75,18 +75,18 @@ cache:
 features:
   market_pulse:
     provider: gemini
-    model: gemini-2.5-flash-lite
+    model: gemini-3.1-flash-lite-preview
     max_tokens: 1024
 
   ticker_brief:
     provider: gemini
-    model: gemini-2.5-flash-lite
+    model: gemini-3.1-flash-lite-preview
     max_tokens: 1024
 
 # 신규 기능 추가 시 fallback 기본값
 defaults:
   provider: gemini
-  model: gemini-2.5-flash
+  model: gemini-3.1-flash-lite-preview
   max_tokens: 1024
 ```
 
