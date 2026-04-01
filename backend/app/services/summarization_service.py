@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import anthropic
-import google.generativeai as genai
+from google import genai
 from pydantic import BaseModel
 
 from app.config import get_feature_config
@@ -152,9 +152,11 @@ async def summarize_articles(
     prompt = _build_prompt(symbol, company_name, articles[:MAX_ARTICLES], lang)
 
     if feat_config.provider == "gemini":
-        if api_key: genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(feat_config.model)
-        response = await model.generate_content_async(prompt)
+        client = genai.Client(api_key=api_key)
+        response = await client.aio.models.generate_content(
+            model=feat_config.model,
+            contents=prompt,
+        )
         raw_text, model_version = response.text, feat_config.model
     else:
         client = anthropic.AsyncAnthropic(api_key=api_key)
