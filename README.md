@@ -280,25 +280,6 @@ Supabase 대시보드 **Authentication > Providers** 에서 원하는 소셜 로
 
 ### 백엔드 — Render
 
-루트 디렉토리의 `render.yaml`을 통해 자동으로 설정됩니다.
-
-**Blueprint 방식 (권장)**
-
-1. [render.com](https://render.com) → **New** → **Blueprint**
-2. GitHub 저장소 연결 → `render.yaml` 자동 감지 후 서비스 생성
-3. **Environment** 탭에서 아래 환경 변수 입력:
-   ```
-   ANTHROPIC_API_KEY        = sk-ant-...
-   GEMINI_API_KEY           = ...
-   SUPABASE_URL             = https://xxxx.supabase.co
-   SUPABASE_ANON_KEY        = eyJ...
-   SUPABASE_SERVICE_ROLE_KEY = eyJ...
-   CORS_ORIGINS             = ["https://your-app.vercel.app"]
-   ```
-4. 배포 완료 후 발급된 URL 확인 (예: `https://fin-aily-backend.onrender.com`)
-
-**수동 방식**
-
 1. [render.com](https://render.com) → **New** → **Web Service**
 2. GitHub 저장소 연결 후 아래 설정:
    | 항목 | 값 |
@@ -307,6 +288,16 @@ Supabase 대시보드 **Authentication > Providers** 에서 원하는 소셜 로
    | **Runtime** | `Python` |
    | **Build Command** | `pip install -r requirements.txt` |
    | **Start Command** | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+3. **Environment** 탭에서 아래 환경 변수 입력:
+   ```
+   ANTHROPIC_API_KEY         = sk-ant-...
+   GEMINI_API_KEY            = ...
+   SUPABASE_URL              = https://xxxx.supabase.co
+   SUPABASE_ANON_KEY         = eyJ...
+   SUPABASE_SERVICE_ROLE_KEY = eyJ...
+   CORS_ORIGINS              = ["https://your-app.vercel.app"]
+   ```
+4. 배포 완료 후 발급된 URL 확인 (예: `https://fin-aily-backend.onrender.com`)
 
 > **참고**: Render 무료 플랜은 15분 비활성 시 슬립 상태가 됩니다. 첫 요청 시 콜드스타트(30~60초)가 발생할 수 있습니다.
 
