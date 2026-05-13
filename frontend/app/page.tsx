@@ -1,30 +1,30 @@
 "use client";
 
-/**
- * app/page.tsx
- * ─────────────
- * 홈 페이지: fin-aily 브랜드 및 탭 인터페이스 (Ticker Brief / Market Pulse).
- */
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TickerSearch } from "@/components/ui/TickerSearch";
 import { DigestCard } from "@/components/news/DigestCard";
 import { api, type NewsResponse } from "@/lib/api";
 
 type TabType = "brief" | "pulse";
 
-export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<TabType>("brief");
+function HomeContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab: TabType = searchParams.get("tab") === "pulse" ? "pulse" : "brief";
+
   const [marketData, setMarketData] = useState<NewsResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Market Pulse 데이터 로드
+  const setActiveTab = (tab: TabType) => {
+    router.push(tab === "pulse" ? "/?tab=pulse" : "/");
+  };
+
   useEffect(() => {
     if (activeTab === "pulse" && !marketData) {
       const loadMarketPulse = async () => {
         setLoading(true);
         try {
-          // 백엔드 엔드포인트: GET /news/market-pulse
           const data = await api.news.getMarketPulse();
           setMarketData(data);
         } catch (error) {
@@ -44,8 +44,8 @@ export default function HomePage() {
         <div className="text-4xl sm:text-5xl mb-4">📈</div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">fin-Aily</h1>
         <p className="text-slate-500 text-sm sm:text-base max-w-md mx-auto leading-relaxed">
-          {activeTab === "brief" 
-            ? "티커를 검색하면 AI가 최신 뉴스를 10개의 핵심 포인트로 요약해드립니다." 
+          {activeTab === "brief"
+            ? "티커를 검색하면 AI가 최신 뉴스를 10개의 핵심 포인트로 요약해드립니다."
             : "최신 주요 경제 소식을 AI 비서가 정리해드립니다."}
         </p>
       </div>
@@ -55,8 +55,8 @@ export default function HomePage() {
         <button
           onClick={() => setActiveTab("brief")}
           className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-            activeTab === "brief" 
-              ? "bg-white text-blue-600 shadow-md" 
+            activeTab === "brief"
+              ? "bg-white text-blue-600 shadow-md"
               : "text-slate-500 hover:text-slate-800"
           }`}
         >
@@ -65,8 +65,8 @@ export default function HomePage() {
         <button
           onClick={() => setActiveTab("pulse")}
           className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-            activeTab === "pulse" 
-              ? "bg-white text-blue-600 shadow-md" 
+            activeTab === "pulse"
+              ? "bg-white text-blue-600 shadow-md"
               : "text-slate-500 hover:text-slate-800"
           }`}
         >
@@ -101,5 +101,13 @@ export default function HomePage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
   );
 }
