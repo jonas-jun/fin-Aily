@@ -11,15 +11,15 @@ cache:
 features:
   market_pulse:
     provider: gemini
-    model: gemini-3.1-flash-lite-preview
+    model: gemini-3.1-flash-lite
     max_tokens: 1024
 
   ticker_brief:
     provider: gemini
-    model: gemini-3.1-flash-lite-preview
+    model: gemini-3.1-flash-lite
     max_tokens: 1024
 
 defaults:
   provider: gemini
-  model: gemini-3.1-flash-lite-preview
+  model: gemini-3.1-flash-lite
   max_tokens: 1024
