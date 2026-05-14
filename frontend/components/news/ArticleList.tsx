@@ -51,7 +51,7 @@ export function ArticleList({ articles, symbol }: Props) {
                 href={article.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block flex-1"
+                className="group block flex-1 min-w-0"
               >
                 <p className="text-sm font-medium text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">
                   {article.title}
@@ -60,7 +60,7 @@ export function ArticleList({ articles, symbol }: Props) {
                 <ArticleMeta source={article.source} publishedAt={article.published_at} />
               </a>
             ) : (
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-800 line-clamp-2 leading-snug">
                   {article.title}
                 </p>

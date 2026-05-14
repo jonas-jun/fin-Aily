@@ -54,7 +54,7 @@ export function DigestCard({ digest, symbol, articles }: Props) {
             ) : (
               <span className="mt-0.5 text-slate-400 shrink-0 select-none">•</span>
             )}
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 min-w-0">
               <span>{bullet.point}</span>
               {symbol === "MARKET" && articles?.[i] ? (
                 <a
