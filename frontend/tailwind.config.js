@@ -6,7 +6,12 @@ module.exports = {
     "./lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        "brand-navy": "#1E3A5F",
+        "brand-green": "#22C55E",
+      },
+    },
   },
   plugins: [],
 };

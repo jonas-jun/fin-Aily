@@ -26,7 +26,7 @@ export function DigestCard({ digest, symbol, articles }: Props) {
       <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-base">📝</span>
-          <h2 className="font-semibold text-slate-800 text-sm">Yahoo Finance 최신 뉴스 AI 요약</h2>
+          <h2 className="font-semibold text-slate-800 text-sm">Yahoo Finance News AI Summary</h2>
           <span className="text-xs text-slate-400">
             최근 {based_on_articles}개 기사 기반
           </span>
@@ -50,7 +50,7 @@ export function DigestCard({ digest, symbol, articles }: Props) {
         {summary.map((bullet, i) => (
           <li key={i} className="flex gap-2 text-sm text-slate-700 leading-relaxed">
             {symbol === "MARKET" ? (
-              <span className="mt-0.5 text-blue-500 font-semibold shrink-0 select-none w-5 text-center">{i + 1}</span>
+              <span className="mt-0.5 text-[#22C55E] font-semibold shrink-0 select-none w-5 text-center">{i + 1}</span>
             ) : (
               <span className="mt-0.5 text-slate-400 shrink-0 select-none">•</span>
             )}
@@ -61,7 +61,7 @@ export function DigestCard({ digest, symbol, articles }: Props) {
                   href={articles[i].url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-slate-400 hover:text-blue-500 transition-colors truncate"
+                  className="text-xs text-slate-400 hover:text-[#22C55E] transition-colors truncate"
                 >
                   {articles[i].title} ↗
                 </a>

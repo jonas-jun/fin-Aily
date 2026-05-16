@@ -1,11 +1,5 @@
 "use client";
 
-/**
- * components/ui/TickerSearch.tsx
- * ────────────────────────────────
- * 티커 자동완성 검색 컴포넌트.
- */
-
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type TickerResult } from "@/lib/api";
@@ -19,7 +13,6 @@ export function TickerSearch() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -30,7 +23,6 @@ export function TickerSearch() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // 디바운스 검색
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (query.trim().length < 1) {
@@ -71,24 +63,23 @@ export function TickerSearch() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="티커 검색 (예: AAPL, TSLA)"
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 sm:py-2.5 text-base sm:text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Search by ticker (e.g. AAPL, TSLA)"
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 sm:py-2.5 text-base sm:text-sm shadow-sm focus:border-[#22C55E] focus:outline-none focus:ring-1 focus:ring-[#22C55E]"
           />
           {loading && (
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
-              검색 중…
+              Searching…
             </span>
           )}
         </div>
         <button
           type="submit"
-          className="rounded-lg bg-blue-600 px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium text-white hover:bg-blue-700 active:bg-blue-800 transition-colors"
+          className="rounded-lg bg-[#22C55E] px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium text-white hover:bg-green-600 active:bg-green-700 transition-colors"
         >
-          검색
+          Search
         </button>
       </form>
 
-      {/* 자동완성 드롭다운 */}
       {open && (
         <ul className="absolute z-10 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg">
           {results.map((r) => (
