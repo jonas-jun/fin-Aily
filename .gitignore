@@ -79,3 +79,4 @@ Thumbs.db
 .env
 .env.local
 *.log
+.vercel
