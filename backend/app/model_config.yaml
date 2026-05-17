@@ -1,7 +1,8 @@
 # ── 캐시 TTL 설정 (단위: 시간) ────────────────────────────────────────────────
 cache:
-  article_ttl_hours: 0.5 # 기사 캐시 (0.1h = 6분)
-  summary_ttl_hours: 0.5 # 요약 캐시 (0.1h = 6분)
+  article_ttl_hours: 0.5    # 기사 캐시 (0.1h = 6분)
+  summary_ttl_hours: 0.5    # 요약 캐시 (0.1h = 6분)
+  research_ttl_hours: 168   # 리서치 리포트 캐시 (7일, 신규)
 
 # ── 기능별 AI 모델 설정 ──────────────────────────────────────────────────────
 # model: 사용할 모델 ID
@@ -15,6 +16,19 @@ features:
   ticker_brief:
     model: gemini-3.1-flash-lite
     max_tokens: 1024
+
+  # ── 심층 리서치 (Deep Research v1, 신규) ───────────────────────────────────
+  research_map_pre:
+    model: gemini-3.1-flash-lite
+    max_tokens: 6144          # 긴 10-K 섹션 청크당 부분 요약
+
+  research_map:
+    model: gemini-3.1-flash-lite
+    max_tokens: 16384         # 분기별 마이크로 요약 (수치·고유명사 보존)
+
+  research_reduce:
+    model: gemini-3.1-flash-lite
+    max_tokens: 32768         # 10섹션 종합 리포트 (표·trend 포함)
 
 defaults:
   model: gemini-3.1-flash-lite

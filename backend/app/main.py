@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.routers import news_router, tickers_router
+from app.routers import research_router
 
 settings = get_settings()
 
@@ -35,8 +36,9 @@ app.add_middleware(RateLimitMiddleware)
 
 # ── 라우터 ────────────────────────────────────────────────────────────────────
 PREFIX = "/v1"
-app.include_router(tickers_router.router, prefix=PREFIX)
-app.include_router(news_router.router,    prefix=PREFIX)
+app.include_router(tickers_router.router,  prefix=PREFIX)
+app.include_router(news_router.router,     prefix=PREFIX)
+app.include_router(research_router.router, prefix=PREFIX)
 
 # ── 공통 에러 핸들러 ──────────────────────────────────────────────────────────
 @app.exception_handler(Exception)

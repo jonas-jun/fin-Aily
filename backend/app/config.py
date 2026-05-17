@@ -81,3 +81,9 @@ def get_cache_config() -> CacheConfig:
         article_ttl_hours=cache.get("article_ttl_hours", 1.0),
         summary_ttl_hours=cache.get("summary_ttl_hours", 24.0),
     )
+
+
+def get_research_cache_config() -> float:
+    """리서치 리포트 캐시 TTL(시간)을 반환한다. 기본값 168시간(7일)."""
+    config = _load_model_config()
+    return float(config.get("cache", {}).get("research_ttl_hours", 168.0))

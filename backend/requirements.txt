@@ -13,6 +13,9 @@ python-dotenv==1.2.1
 pyyaml==6.0.3
 lxml-html-clean==0.4.3
 
+# Research dependencies (Deep Research v1)
+edgartools>=5.31.2
+
 # Dev dependencies
 pytest==8.4.2
 pytest-asyncio==0.24.0

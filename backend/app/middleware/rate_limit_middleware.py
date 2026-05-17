@@ -15,6 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # 엔드포인트별 Rate Limit 설정: {path_prefix: (최대 횟수, 윈도우 초)}
 RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/v1/tickers/search": (30, 60),   # 30회/분
+    "/v1/research/":      (5,  60),   # 5회/분 (리포트 생성 비용 억제)
 }
 
 
