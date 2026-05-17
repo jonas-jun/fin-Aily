@@ -1,85 +1,164 @@
 "use client";
 
-/**
- * app/stock/[symbol]/page.tsx
- * ─────────────────────────────
- * 종목 뉴스 페이지.
- *
- * 레이아웃:
- *   1. DigestCard  — AI 종합 요약 + Sentiment (상단)
- *   2. ArticleList — 기사 제목/링크 목록 (하단)
- */
-
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { api, type NewsResponse } from "@/lib/api";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { api, type NewsResponse, type DeepDiveResponse } from "@/lib/api";
 import { DigestCard } from "@/components/news/DigestCard";
 import { ArticleList } from "@/components/news/ArticleList";
 import { NewsPageSkeleton } from "@/components/ui/Skeletons";
 import { timeAgo } from "@/lib/utils";
+import { DeepDiveLoading } from "@/components/research/DeepDiveLoading";
+import { DeepDiveReportView } from "@/components/research/DeepDiveReportView";
+import { SourceMetadataCard } from "@/components/research/SourceMetadataCard";
 
-export default function StockNewsPage() {
+type TabType = "news" | "deepdive";
+
+function StockDetailContent() {
   const { symbol } = useParams<{ symbol: string }>();
-  const upper = symbol?.toUpperCase() ?? "";
+  const searchParams = useSearchParams();
+  const upperSymbol = symbol?.toUpperCase() ?? "";
 
-  const [data, setData] = useState<NewsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const activeTab: TabType =
+    searchParams.get("tab") === "deepdive" ? "deepdive" : "news";
+
+  const [newsData, setNewsData] = useState<NewsResponse | null>(null);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [newsError, setNewsError] = useState<string | null>(null);
+
+  const [deepDiveData, setDeepDiveData] = useState<DeepDiveResponse | null>(null);
+  const [deepDiveLoading, setDeepDiveLoading] = useState(false);
+  const [deepDiveError, setDeepDiveError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    if (!upper) return;
+    if (!upperSymbol) return;
     let cancelled = false;
 
-    const load = async () => {
-      setLoading(true);
-      setError(null);
+    const fetchNews = async () => {
+      setNewsLoading(true);
+      setNewsError(null);
       try {
-        const res = await api.news.get(upper);
-        if (!cancelled) setData(res);
+        const res = await api.news.get(upperSymbol);
+        if (!cancelled) setNewsData(res);
       } catch (err: unknown) {
         if (!cancelled)
-          setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+          setNewsError(err instanceof Error ? err.message : "뉴스를 가져오는 데 실패했습니다.");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setNewsLoading(false);
       }
     };
 
-    load();
+    fetchNews();
     return () => { cancelled = true; };
-  }, [upper]);
+  }, [upperSymbol]);
+
+  const fetchDeepDive = useCallback(async (force = false) => {
+    if (!upperSymbol) return;
+    if (deepDiveData && !force) return;
+
+    let cancelled = false;
+
+    if (force) setIsRefreshing(true);
+    else setDeepDiveLoading(true);
+    setDeepDiveError(null);
+
+    try {
+      const res = await api.research.get(upperSymbol, force);
+      if (!cancelled) setDeepDiveData(res);
+    } catch (err: unknown) {
+      if (!cancelled)
+        setDeepDiveError(
+          err instanceof Error
+            ? err.message
+            : "심층 분석 리포트를 생성하는 과정에서 오류가 발생했습니다.",
+        );
+    } finally {
+      if (!cancelled) {
+        setDeepDiveLoading(false);
+        setIsRefreshing(false);
+      }
+    }
+
+    return () => { cancelled = true; };
+  }, [upperSymbol, deepDiveData]);
+
+  useEffect(() => {
+    if (activeTab === "deepdive") {
+      fetchDeepDive();
+    }
+  }, [activeTab, fetchDeepDive]);
 
   return (
-    <div>
-      {/* 페이지 헤더 */}
-      <div className="mb-6">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{upper}</h1>
-          {data && <span className="text-sm sm:text-base text-slate-500">{data.company_name}</span>}
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <div className="flex justify-between items-baseline border-b border-slate-100 pb-4">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{upperSymbol}</h1>
+          {newsData && <span className="text-lg text-slate-500 font-medium">{newsData.company_name}</span>}
         </div>
-        {data && (
-          <p className="text-xs text-slate-400 mt-1">
-            마지막 업데이트: {timeAgo(data.last_updated)}
-          </p>
-        )}
+        <p className="text-xs text-slate-400 font-mono">
+          {activeTab === "news" && newsData && `Last updated: ${timeAgo(newsData.last_updated)}`}
+          {activeTab === "deepdive" && deepDiveData && `Report generated: ${timeAgo(deepDiveData.generated_at)}`}
+        </p>
       </div>
 
-      {/* 로딩 */}
-      {loading && <NewsPageSkeleton />}
 
-      {/* 에러 */}
-      {!loading && error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {error}
-        </div>
-      )}
+      <div className="min-h-[400px]">
+        {activeTab === "news" ? (
+          <>
+            {newsLoading && <NewsPageSkeleton />}
+            {!newsLoading && newsError && (
+              <div className="text-sm text-red-500 bg-red-50 p-4 border border-red-200 rounded-lg">
+                {newsError}
+              </div>
+            )}
+            {!newsLoading && newsData && (
+              <div className="space-y-6">
+                <DigestCard digest={newsData.digest} />
+                <ArticleList articles={newsData.articles} />
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {deepDiveLoading && <DeepDiveLoading />}
 
-      {/* 정상 */}
-      {!loading && !error && data && (
-        <>
-          <DigestCard digest={data.digest} />
-          <ArticleList articles={data.articles} />
-        </>
-      )}
+            {!deepDiveLoading && deepDiveError && (
+              <div className="text-sm text-red-500 bg-red-50 p-4 border border-red-200 rounded-lg shadow-sm">
+                <p className="font-semibold mb-1">리포트 로드 실패</p>
+                <p>{deepDiveError}</p>
+                <button
+                  onClick={() => fetchDeepDive(true)}
+                  className="mt-3 px-3 py-1.5 bg-white border border-red-300 rounded-md text-xs font-bold hover:bg-red-100 transition-colors"
+                >
+                  다시 시도하기
+                </button>
+              </div>
+            )}
+
+            {!deepDiveLoading && deepDiveData && (
+              <div className="space-y-6">
+                <DeepDiveReportView
+                  markdown={deepDiveData.report_markdown}
+                  onRefresh={() => fetchDeepDive(true)}
+                  isRefreshing={isRefreshing}
+                />
+                <SourceMetadataCard
+                  metadata={deepDiveData.source_metadata}
+                  modelVersion={deepDiveData.model_version}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
+  );
+}
+
+export default function StockDetailPage() {
+  return (
+    <Suspense>
+      <StockDetailContent />
+    </Suspense>
   );
 }

@@ -40,6 +40,39 @@ export interface NewsResponse {
   articles: Article[];
 }
 
+export interface SourceFiling {
+  form: string;
+  fiscal_year: number;
+  fiscal_quarter: number | null;
+  filing_date: string;
+  period_of_report: string;
+  doc_id: string;
+}
+
+export interface SourceCall {
+  fiscal_year: number;
+  fiscal_quarter: number;
+  event_date: string;
+  source: string;
+  source_url: string;
+}
+
+export interface DeepDiveResponse {
+  symbol: string;
+  company_name: string;
+  generated_at: string;
+  model_version: string;
+  report_markdown: string;
+  source_metadata: {
+    ticker: string;
+    analysis_period: string;
+    sources: {
+      sec_filings: SourceFiling[];
+      earning_calls: SourceCall[];
+    };
+  };
+}
+
 export interface TickerResult {
   symbol: string;
   name: string;
@@ -107,6 +140,11 @@ export const api = {
       apiFetch(`/news/${symbol}?lang=${lang}&limit=${limit}`),
     getMarketPulse: (lang = "ko"): Promise<NewsResponse> =>
       apiFetch(`/news/market-pulse?lang=${lang}`),
+  },
+
+  research: {
+    get: (symbol: string, forceRefresh = false): Promise<DeepDiveResponse> =>
+      apiFetch(`/research/${symbol}${forceRefresh ? "?force_refresh=true" : ""}`),
   },
 
   users: {

@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type TickerResult } from "@/lib/api";
 
-export function TickerSearch() {
+interface TickerSearchProps {
+  onSelect?: (symbol: string) => void;
+  placeholder?: string;
+}
+
+export function TickerSearch({ onSelect, placeholder }: TickerSearchProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TickerResult[]>([]);
@@ -47,7 +52,8 @@ export function TickerSearch() {
   const handleSelect = (symbol: string) => {
     setQuery("");
     setOpen(false);
-    router.push(`/stock/${symbol}`);
+    if (onSelect) onSelect(symbol);
+    else router.push(`/stock/${symbol}`);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -63,7 +69,7 @@ export function TickerSearch() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by ticker (e.g. AAPL, TSLA)"
+            placeholder={placeholder ?? "Search by ticker (e.g. AAPL, TSLA)"}
             className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 sm:py-2.5 text-base sm:text-sm shadow-sm focus:border-[#22C55E] focus:outline-none focus:ring-1 focus:ring-[#22C55E]"
           />
           {loading && (
