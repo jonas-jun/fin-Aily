@@ -14,9 +14,6 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Anthropic
-    anthropic_api_key: str = ""
-
     # Gemini
     gemini_api_key: str = ""
 
@@ -44,7 +41,6 @@ def get_settings() -> Settings:
 
 @dataclass
 class FeatureModelConfig:
-    provider: str
     model: str
     max_tokens: int
 
@@ -66,7 +62,6 @@ def get_feature_config(feature: str) -> FeatureModelConfig:
     config = _load_model_config()
     feat = config.get("features", {}).get(feature, config.get("defaults", {}))
     return FeatureModelConfig(
-        provider=feat["provider"],
         model=feat["model"],
         max_tokens=feat.get("max_tokens", 1024),
     )

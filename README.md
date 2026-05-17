@@ -2,7 +2,7 @@
 
 AI 기술로 복잡한 미국 주식 뉴스를 투자자 관점의 핵심 인사이트로 정제해주는 웹 서비스.
 
-티커를 검색하면 Yahoo Finance 최신 뉴스를 자동 수집하고, Google Gemini / Anthropic Claude가 핵심 포인트·감성 분석·시장 흐름을 한 페이지로 요약해드립니다.
+티커를 검색하면 Yahoo Finance 최신 뉴스를 자동 수집하고, Google Gemini가 핵심 포인트·감성 분석·시장 흐름을 한 페이지로 요약해드립니다.
 
 **🌐 서비스 URL**
 
@@ -32,7 +32,7 @@ AI 기술로 복잡한 미국 주식 뉴스를 투자자 관점의 핵심 인사
 |---|---|
 | Backend | FastAPI, Python 3.13 |
 | 뉴스 수집 | yfinance, feedparser (RSS), newspaper3k |
-| AI 분석 | Google Gemini / Anthropic Claude (YAML 기반 기능별 설정) |
+| AI 분석 | Google Gemini (YAML 기반 기능별 설정) |
 | Database | Supabase (PostgreSQL) |
 | Frontend | Next.js 16 (App Router), TypeScript |
 | 스타일 | Tailwind CSS |
@@ -79,7 +79,7 @@ fin-aily-us/
 │   │   │   └── tickers_router.py      # 종목 검색 엔드포인트
 │   │   └── services/
 │   │       ├── news_service.py            # yfinance + RSS 뉴스 수집
-│   │       ├── summarization_service.py   # Gemini / Claude AI 요약
+│   │       ├── summarization_service.py   # Gemini AI 요약
 │   │       ├── article_cache_service.py   # 기사 DB 캐시
 │   │       └── cache_service.py           # 요약 결과 DB 캐시
 │   ├── migrations/
@@ -117,7 +117,7 @@ fin-aily-us/
 
 - Python 3.11+
 - Node.js 18+
-- [Gemini API 키](https://aistudio.google.com/app/apikey) 또는 [Anthropic API 키](https://console.anthropic.com)
+- [Gemini API 키](https://aistudio.google.com/app/apikey)
 - [Supabase 프로젝트](https://supabase.com)
 
 ### 1. Supabase 설정
@@ -181,7 +181,6 @@ npm run dev
 ### Backend (`backend/.env`)
 
 ```
-ANTHROPIC_API_KEY=sk-ant-...
 GEMINI_API_KEY=your-gemini-api-key
 
 SUPABASE_URL=https://xxxx.supabase.co
@@ -212,12 +211,10 @@ cache:
 
 features:
   market_pulse:
-    provider: gemini   # "gemini" | "claude"
     model: gemini-3.1-flash-lite
     max_tokens: 1024
 
   ticker_brief:
-    provider: gemini
     model: gemini-3.1-flash-lite
     max_tokens: 1024
 ```

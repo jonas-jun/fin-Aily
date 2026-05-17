@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.config import get_feature_config, get_settings
+from app.config import get_settings
 from app.dependencies import get_db
 from app.services.article_cache_service import (
     get_cached_articles,
@@ -105,10 +105,7 @@ async def _get_or_summarize(
         )
 
     settings = get_settings()
-    feat_config = get_feature_config(feature)
-    api_key = (
-        settings.gemini_api_key if feat_config.provider == "gemini" else settings.anthropic_api_key
-    ) or None
+    api_key = settings.gemini_api_key or None
 
     inputs = _build_article_inputs(articles)
     digest = await summarize_articles(
