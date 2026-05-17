@@ -19,7 +19,7 @@ from app.services.article_cache_service import (
     save_articles,
 )
 from app.services.cache_service import get_cached_digest, save_digest_cache
-from app.services.news_service import RawArticle, fetch_articles, fetch_market_news
+from app.services.news_service import RawArticle, fetch_articles, fetch_market_news, get_company_name
 from app.services.summarization_service import (
     ArticleInput,
     ArticleOut,
@@ -191,7 +191,8 @@ async def get_news(
     1시간 이내에 수집된 기사가 있으면 DB 캐시를 재사용한다.
     """
     upper_symbol = symbol.upper()
-    ticker_id = await get_or_create_ticker(db, upper_symbol)
+    company = get_company_name(upper_symbol)
+    ticker_id = await get_or_create_ticker(db, upper_symbol, company)
 
     raw_articles = await _get_or_fetch_articles(
         db, ticker_id, lambda: fetch_articles(upper_symbol, limit), limit=limit
@@ -204,7 +205,7 @@ async def get_news(
 
     try:
         digest_out = await _get_or_summarize(
-            db, ticker_id, upper_symbol, upper_symbol, raw_articles, lang
+            db, ticker_id, upper_symbol, company, raw_articles, lang
         )
     except Exception as exc:
         logger.error("종목 요약 실패: symbol=%s, error=%s", upper_symbol, exc)
@@ -215,7 +216,7 @@ async def get_news(
 
     return NewsResponse(
         symbol=upper_symbol,
-        company_name=upper_symbol,
+        company_name=company,
         last_updated=datetime.now(timezone.utc).isoformat(),
         digest=digest_out,
         articles=_build_article_outs(raw_articles),

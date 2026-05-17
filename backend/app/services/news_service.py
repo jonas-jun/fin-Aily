@@ -43,6 +43,15 @@ def _scrape_body(url: str) -> str:
         return ""
 
 
+def get_company_name(symbol: str) -> str:
+    """yfinance에서 종목의 회사명을 조회한다. 실패 시 심볼 반환."""
+    try:
+        info = yf.Ticker(symbol).info
+        return info.get("longName") or info.get("shortName") or symbol
+    except Exception:
+        return symbol
+
+
 async def fetch_articles(symbol: str, limit: int = 10) -> list[RawArticle]:
     """티커 심볼에 대한 최신 뉴스를 수집한다."""
     articles = await _fetch_from_yfinance(symbol, limit)
