@@ -10,7 +10,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-import anthropic
 from google import genai
 from pydantic import BaseModel
 
@@ -151,21 +150,12 @@ async def summarize_articles(
     feat_config = get_feature_config(feature)
     prompt = _build_prompt(symbol, company_name, articles[:MAX_ARTICLES], lang)
 
-    if feat_config.provider == "gemini":
-        client = genai.Client(api_key=api_key)
-        response = await client.aio.models.generate_content(
-            model=feat_config.model,
-            contents=prompt,
-        )
-        raw_text, model_version = response.text, feat_config.model
-    else:
-        client = anthropic.AsyncAnthropic(api_key=api_key)
-        message = await client.messages.create(
-            model=feat_config.model,
-            max_tokens=feat_config.max_tokens,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw_text, model_version = message.content[0].text, feat_config.model
+    client = genai.Client(api_key=api_key)
+    response = await client.aio.models.generate_content(
+        model=feat_config.model,
+        contents=prompt,
+    )
+    raw_text, model_version = response.text, feat_config.model
 
     parsed = _parse_llm_response(raw_text)
     bullets = [SummaryPoint(**b) for b in parsed.get("summary", [])]
