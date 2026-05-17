@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Optional
-from urllib.parse import quote_plus
+from urllib.parse import parse_qs, quote_plus, unquote, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -22,12 +22,13 @@ logger = logging.getLogger(__name__)
 # EDGAR 접근에 필요한 User-Agent (SEC 정책)
 _EDGAR_IDENTITY = "fin-aily-us junhot08@gmail.com"
 _HEADERS = {
-    "User-Agent": "fin-aily-us/1.0 (junhot08@gmail.com)",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-# Motley Fool 검색 URL
-_FOOL_SEARCH_URL = "https://www.fool.com/search/"
+# DuckDuckGo HTML 검색으로 Motley Fool 트랜스크립트 URL 탐색
+_DDG_SEARCH_URL = "https://html.duckduckgo.com/html/"
 _FOOL_TRANSCRIPT_PREFIX = "/earnings/call-transcripts/"
 _FOOL_BASE = "https://www.fool.com"
 
@@ -204,8 +205,47 @@ def _extract_text_from_doc(doc) -> tuple[str, dict[str, str]]:
     return full_text[:_MAX_FULL_TEXT_CHARS], sections
 
 
+# 어닝스 릴리즈 6-K 최소 길이 — 이보다 짧은 6-K는 어닝스 릴리즈가 아닌 것으로 판단
+_6K_EARNINGS_MIN_CHARS = 40_000
+
+# 6-K 어닝스 릴리즈 텍스트에서 실제 분기 종료일을 추출하는 패턴
+_6K_PERIOD_PATTERN = re.compile(
+    r"(?:ended|ending|period)\s+(\w+ \d{1,2},?\s+\d{4}|\d{4}-\d{2}-\d{2})",
+    re.IGNORECASE,
+)
+
+
+def _extract_text_foreign(doc) -> str:
+    """20-F/6-K 문서에서 본문 텍스트를 추출한다."""
+    try:
+        text = doc.text() if callable(getattr(doc, "text", None)) else str(doc)
+        if not text or len(text) < 100:
+            text = str(doc)
+        return text[:_MAX_FULL_TEXT_CHARS]
+    except Exception:
+        return str(doc)[:_MAX_FULL_TEXT_CHARS]
+
+
+def _extract_6k_period(text: str, fallback: str) -> str:
+    """6-K 어닝스 릴리즈 본문에서 분기 종료일(YYYY-MM-DD)을 추출한다."""
+    m = _6K_PERIOD_PATTERN.search(text[:2000])
+    if not m:
+        return fallback
+    raw = m.group(1).strip().rstrip(",")
+    for fmt in ("%B %d %Y", "%B %d, %Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(raw, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return fallback
+
+
 def _collect_sec_sync(ticker: str, n: int) -> list[SecFiling]:
-    """edgartools 5.x를 사용해 최근 n건의 10-K/10-Q를 수집한다 (동기)."""
+    """edgartools 5.x를 사용해 최근 n건의 공시를 수집한다 (동기).
+
+    국내 상장사(10-K/10-Q) 우선 시도 후 결과가 없으면
+    외국 기업(20-F/6-K)으로 폴백한다.
+    """
     try:
         from edgar import Company, set_identity  # type: ignore[import-untyped]
     except ImportError as exc:
@@ -214,39 +254,72 @@ def _collect_sec_sync(ticker: str, n: int) -> list[SecFiling]:
     set_identity(_EDGAR_IDENTITY)
     company = Company(ticker.upper())
 
-    filings_col = company.get_filings(form=["10-K", "10-Q"])
-    results: list[SecFiling] = []
+    form_sets = [["10-K", "10-Q"], ["20-F", "6-K"]]
+    for forms in form_sets:
+        filings_col = company.get_filings(form=forms)
+        results: list[SecFiling] = []
+        # 6-K 중복 방지: 같은 (fiscal_year, fiscal_quarter)는 가장 긴 것 1개만
+        seen_quarters: set[tuple] = set()
+        count = 0
 
-    count = 0
-    for filing in filings_col:
-        if count >= n:
-            break
-        try:
-            form = filing.form
-            filing_date = _date_to_str(filing.filing_date)
-            period = _date_to_str(filing.period_of_report)
-            accession = getattr(filing, "accession_no", "") or ""
+        for filing in filings_col:
+            if count >= n:
+                break
+            try:
+                form = filing.form
+                filing_date = _date_to_str(filing.filing_date)
+                period = _date_to_str(filing.period_of_report)
+                accession = getattr(filing, "accession_no", "") or ""
 
-            doc = filing.obj()
-            full_text, sections = _extract_text_from_doc(doc)
+                doc = filing.obj()
 
-            fiscal_year, fiscal_quarter = _period_to_fiscal(period, form)
-            results.append(SecFiling(
-                form=form,
-                fiscal_year=fiscal_year,
-                fiscal_quarter=fiscal_quarter,
-                filing_date=filing_date,
-                period_of_report=period,
-                doc_id=accession,
-                full_text=full_text,
-                sections=sections,
-            ))
-            count += 1
-        except Exception as exc:
-            logger.warning("SEC 공시 파싱 오류 (건너뜀): %s", exc)
-            count += 1  # 실패한 건도 카운트해 무한루프 방지
+                if form == "6-K":
+                    full_text = _extract_text_foreign(doc)
+                    # 어닝스 릴리즈가 아닌 짧은 6-K 제외
+                    if len(full_text) < _6K_EARNINGS_MIN_CHARS:
+                        continue
+                    sections: dict[str, str] = {}
+                    # 6-K period_of_report는 공시일과 같은 경우가 많으므로 본문에서 추출
+                    real_period = _extract_6k_period(full_text, period)
+                    fiscal_year, fiscal_quarter = _period_to_fiscal(real_period, "10-Q")
+                    # 같은 분기 중복 수집 방지
+                    q_key = (fiscal_year, fiscal_quarter)
+                    if q_key in seen_quarters:
+                        continue
+                    seen_quarters.add(q_key)
+                    period = real_period
+                elif form == "20-F":
+                    full_text = _extract_text_foreign(doc)
+                    if not full_text or len(full_text) < 200:
+                        full_text, _ = _extract_text_from_doc(doc)
+                    sections = {}
+                    fiscal_year, fiscal_quarter = _period_to_fiscal(period, "10-K")
+                else:
+                    full_text, sections = _extract_text_from_doc(doc)
+                    fiscal_year, fiscal_quarter = _period_to_fiscal(period, form)
 
-    return results
+                results.append(SecFiling(
+                    form=form,
+                    fiscal_year=fiscal_year,
+                    fiscal_quarter=fiscal_quarter,
+                    filing_date=filing_date,
+                    period_of_report=period,
+                    doc_id=accession,
+                    full_text=full_text,
+                    sections=sections,
+                ))
+                count += 1
+            except Exception as exc:
+                logger.warning("SEC 공시 파싱 오류 (건너뜀): %s", exc)
+                count += 1
+
+        if results:
+            return results
+
+    logger.error(
+        "SEC 공시 없음: ticker=%s — 10-K/10-Q/20-F/6-K 형식의 공시를 찾을 수 없습니다.", ticker
+    )
+    return []
 
 
 async def collect_sec_filings(ticker: str, n: int = 4) -> list[SecFiling]:
@@ -263,13 +336,13 @@ async def collect_sec_filings(ticker: str, n: int = 4) -> list[SecFiling]:
 # ── Motley Fool 어닝스콜 수집 ──────────────────────────────────────────────────
 
 def _find_fool_transcript_urls_sync(ticker: str, n: int) -> list[str]:
-    """Motley Fool 검색을 통해 어닝스콜 스크립트 URL 목록을 반환한다 (동기)."""
-    query = f"{ticker} earnings call transcript"
+    """DuckDuckGo 검색으로 Motley Fool 어닝스콜 스크립트 URL 목록을 반환한다 (동기)."""
+    query = f"site:fool.com earnings call transcript {ticker}"
     params = {"q": query}
 
     def _fetch():
         return requests.get(
-            _FOOL_SEARCH_URL,
+            _DDG_SEARCH_URL,
             params=params,
             headers=_HEADERS,
             timeout=15,
@@ -280,7 +353,7 @@ def _find_fool_transcript_urls_sync(ticker: str, n: int) -> list[str]:
         resp = _retry_sync(_fetch)
         soup = BeautifulSoup(resp.text, "lxml")
     except Exception as exc:
-        logger.warning("Motley Fool 검색 실패: %s", exc)
+        logger.warning("DuckDuckGo 검색 실패: %s", exc)
         return []
 
     urls: list[str] = []
@@ -288,20 +361,19 @@ def _find_fool_transcript_urls_sync(ticker: str, n: int) -> list[str]:
 
     for a in soup.find_all("a", href=True):
         href: str = a["href"]
-        # 어닝스콜 스크립트 URL 패턴 필터
-        if _FOOL_TRANSCRIPT_PREFIX not in href:
+        if "fool.com" not in href:
             continue
-        # 절대 URL로 변환
-        full_url = href if href.startswith("http") else _FOOL_BASE + href
-        # 티커 키워드가 URL 또는 링크 텍스트에 포함되는지 확인
-        link_text = (a.get_text() or "").lower()
-        url_lower = full_url.lower()
-        ticker_lower = ticker.lower()
-        if ticker_lower not in url_lower and ticker_lower not in link_text:
+        # DDG 리다이렉트 URL에서 실제 URL 추출
+        if "uddg=" in href:
+            qs = parse_qs(urlparse(href).query)
+            real = unquote(qs.get("uddg", [""])[0])
+        else:
+            real = href if href.startswith("http") else "https:" + href
+        if _FOOL_TRANSCRIPT_PREFIX not in real:
             continue
-        if full_url not in seen:
-            seen.add(full_url)
-            urls.append(full_url)
+        if real not in seen:
+            seen.add(real)
+            urls.append(real)
         if len(urls) >= n:
             break
 
@@ -361,7 +433,7 @@ def _infer_quarter_from_url(url: str) -> tuple[int, int, str]:
     return fiscal_year, fiscal_quarter, event_date
 
 
-async def collect_earnings_calls(ticker: str, n: int = 8) -> list[EarningsCall]:
+async def collect_earnings_calls(ticker: str, n: int = 4) -> list[EarningsCall]:
     """Motley Fool에서 최근 n개 분기 어닝스콜 스크립트를 비동기로 수집한다."""
     try:
         urls = await asyncio.to_thread(_find_fool_transcript_urls_sync, ticker, n)
@@ -396,8 +468,8 @@ async def collect_earnings_calls(ticker: str, n: int = 8) -> list[EarningsCall]:
 
 async def collect_all(
     ticker: str,
-    sec_n: int = 4,
-    call_n: int = 8,
+    sec_n: int = 8,
+    call_n: int = 4,
 ) -> tuple[list[SecFiling], list[EarningsCall]]:
     """SEC 공시와 어닝스콜 스크립트를 동시에 수집한다."""
     sec_task = asyncio.create_task(collect_sec_filings(ticker, sec_n))

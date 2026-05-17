@@ -92,7 +92,7 @@ async def get_or_generate_report(
     # source_metadata 구성
     source_metadata: dict[str, Any] = {
         "ticker": upper_symbol,
-        "analysis_period": "최근 4개 분기 공시 & 최근 8개 분기 컨퍼런스콜",
+        "analysis_period": "최근 8개 공시(약 2년치) & 최근 4개 분기 컨퍼런스콜",
         "sources": {
             "sec_filings": [
                 {

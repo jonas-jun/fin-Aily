@@ -49,8 +49,23 @@ def _build_map_prompt(
     fiscal_label: str,
     filing_text: str,
     call_text: str,
+    quarterly_context: str = "",
 ) -> str:
     call_block = f"\n## 어닝스콜 스크립트\n{call_text}" if call_text.strip() else "\n## 어닝스콜 스크립트\n(해당 분기 스크립트 없음)"
+
+    q4_block = ""
+    if quarterly_context.strip():
+        q4_block = f"""
+## Q4 분기 수치 계산 지침 (10-K 전용)
+이 공시는 연간 10-K입니다. Q3 10-Q에는 Q1+Q2+Q3를 합산한 **9개월 누적(YTD)** 수치가 포함됩니다.
+아래 분기 데이터를 참고하여 **Q4 = 연간 합계(10-K) - 9개월 누적(Q3 10-Q YTD)** 방식으로 4분기 수치를 계산하세요.
+계산된 Q4 수치는 각 섹션에 **(Q4 계산값)** 태그를 붙여 명시하세요.
+계산에 필요한 수치가 누락된 항목은 "Q4 계산 불가" 로 표기하세요.
+
+## 분기 참고 데이터 (Q3 10-Q YTD 포함)
+{quarterly_context}
+"""
+
     return f"""당신은 글로벌 상장 기업의 공시 문서와 컨퍼런스콜 스크립트에서
 핵심 투자 단서를 추출하는 대용량 금융 데이터 정제 전문가입니다.
 
@@ -62,7 +77,7 @@ def _build_map_prompt(
 2. 가치 판단/추측은 배제, 원문 팩트와 경영진 워딩만 추출.
 3. 해당 분기에 언급 없는 항목은 임의 생성 금지 — "해당 분기 언급 없음" 명시.
 4. 한국어로 작성, 수치/고유명사/지표는 영문 병기.
-
+{q4_block}
 ## 출력 양식 (마크다운 6섹션 엄수)
 ### 1. 정량적 재무 실적 및 마진 (Financial Quality)
 - 매출/영업이익/순이익 (YoY·QoQ 변화 포함)
@@ -107,6 +122,7 @@ def _build_reduce_prompt(
 바탕으로 외부 데이터 없이 1차 출처에 기반한 심층 투자 리포트를 한국어로 작성하라.
 
 [기업명] {company_name} / [티커] {ticker}
+[작성자] fin-aily
 
 ## 데이터 원칙
 1. 분석 근거는 오직 제공된 요약 데이터에 한정.
@@ -184,7 +200,7 @@ async def _run_map_pre(
     """
     cfg = get_feature_config("research_map_pre")
 
-    if filing.form != "10-K" or len(filing.full_text) < _MAP_PRE_THRESHOLD_CHARS:
+    if filing.form not in {"10-K", "20-F"} or len(filing.full_text) < _MAP_PRE_THRESHOLD_CHARS:
         return filing.full_text
 
     if not filing.sections:
@@ -222,10 +238,11 @@ async def _run_map(
     fiscal_label: str,
     filing_text: str,
     call_text: str,
+    quarterly_context: str = "",
 ) -> str:
     """단일 분기 마이크로 요약을 생성한다."""
     cfg = get_feature_config("research_map")
-    prompt = _build_map_prompt(ticker, fiscal_label, filing_text, call_text)
+    prompt = _build_map_prompt(ticker, fiscal_label, filing_text, call_text, quarterly_context)
     return await _call_llm(client, cfg.model, prompt, cfg.max_tokens)
 
 
@@ -237,7 +254,7 @@ async def _run_reduce(
     company_name: str,
     map_results: list[str],
 ) -> str:
-    """8개 분기 마이크로 요약을 결합해 최종 리포트를 생성한다."""
+    """4개 분기 마이크로 요약을 결합해 최종 리포트를 생성한다."""
     cfg = get_feature_config("research_reduce")
     prompt = _build_reduce_prompt(ticker, company_name, map_results)
     return await _call_llm(client, cfg.model, prompt, cfg.max_tokens)
@@ -259,9 +276,11 @@ async def generate_report(
     client = genai.Client(api_key=api_key)
 
     # 분기 라벨 생성 함수
+    _ANNUAL_FORMS = {"10-K", "20-F"}
+
     def _fiscal_label(f: SecFiling) -> str:
-        if f.form == "10-K":
-            return f"FY{f.fiscal_year} 10-K"
+        if f.form in _ANNUAL_FORMS:
+            return f"FY{f.fiscal_year} {f.form}"
         return f"FY{f.fiscal_year} Q{f.fiscal_quarter}"
 
     # 공시 ↔ 컨콜 매핑 (fiscal_year + quarter 기준)
@@ -270,30 +289,49 @@ async def generate_report(
         key = (c.fiscal_year, c.fiscal_quarter)
         call_map[key] = c.text
 
-    # Map-Pre → Map 병렬 실행 (분기별)
-    async def _process_filing(filing: SecFiling) -> str:
-        label = _fiscal_label(filing)
-        filing_text = await _run_map_pre(client, ticker, filing)
-        call_text = call_map.get((filing.fiscal_year, filing.fiscal_quarter), "")
-        try:
-            return await _run_map(client, ticker, label, filing_text, call_text)
-        except Exception as exc:
-            logger.error("Map 실패: label=%s, error=%s", label, exc)
-            raise
-
     if not filings and not calls:
         raise RuntimeError("ANALYSIS_FAILED: 수집된 공시 및 컨콜 데이터 없음")
 
     # 공시가 없으면 컨콜만으로 Map 실행 (최소 동작 보장)
     if not filings:
         logger.warning("공시 없음 — 컨콜 텍스트만으로 Map 단계 진행")
-        cfg_map = get_feature_config("research_map")
         map_tasks = [
             _run_map(client, ticker, f"FY{c.fiscal_year} Q{c.fiscal_quarter}", "", c.text)
             for c in calls
         ]
     else:
-        map_tasks = [_process_filing(f) for f in filings]
+        # Phase 1: 모든 공시에 Map-Pre 병렬 실행
+        map_pre_texts = await asyncio.gather(
+            *[_run_map_pre(client, ticker, f) for f in filings]
+        )
+
+        # 10-Q 압축 텍스트 조회 맵 구성: {(fiscal_year, quarter): compressed_text}
+        # 10-K Map 시 같은 회계연도 Q1-Q3 데이터를 Q4 계산용으로 전달
+        _MAX_Q_CONTEXT_CHARS = 8_000
+        quarterly_pre: dict[tuple, str] = {}
+        for f, text in zip(filings, map_pre_texts):
+            if f.form == "10-Q":
+                quarterly_pre[(f.fiscal_year, f.fiscal_quarter)] = text[:_MAX_Q_CONTEXT_CHARS]
+
+        # Phase 2: Map 병렬 실행
+        async def _run_map_for(filing: SecFiling, filing_text: str) -> str:
+            label = _fiscal_label(filing)
+            call_text = call_map.get((filing.fiscal_year, filing.fiscal_quarter), "")
+            quarterly_context = ""
+            if filing.form in _ANNUAL_FORMS:
+                parts = []
+                for q in (1, 2, 3):
+                    qt = quarterly_pre.get((filing.fiscal_year, q), "")
+                    if qt:
+                        parts.append(f"### Q{q} (FY{filing.fiscal_year})\n{qt}")
+                quarterly_context = "\n\n".join(parts)
+            try:
+                return await _run_map(client, ticker, label, filing_text, call_text, quarterly_context)
+            except Exception as exc:
+                logger.error("Map 실패: label=%s, error=%s", label, exc)
+                raise
+
+        map_tasks = [_run_map_for(f, t) for f, t in zip(filings, map_pre_texts)]
 
     map_results_raw = await asyncio.gather(*map_tasks, return_exceptions=True)
 
