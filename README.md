@@ -7,7 +7,7 @@ AI 기술로 미국 주식 뉴스를 투자자 관점의 핵심 인사이트로 
 | | URL |
 |---|---|
 | Frontend | https://fin-aily-us.vercel.app |
-| Backend API | https://fin-aily-us-96426296927.asia-northeast1.run.app/docs |
+| Backend API | https://fin-aily-us-96426296927.asia-northeast1.run.app |
 
 ---
 
