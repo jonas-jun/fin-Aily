@@ -1,2 +1,0 @@
-"""Deep research application package."""
-

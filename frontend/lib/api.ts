@@ -54,6 +54,36 @@ export interface UserProfile {
   created_at: string;
 }
 
+// ── 심층 리서치 ─────────────────────────────────────────────────────────────────
+export interface ResearchJob {
+  job_id: number;
+  symbol: string;
+  status: "pending" | "running" | "completed" | "failed";
+  progress: string | null;
+  cached: boolean;
+  report: string | null;
+  error: string | null;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
+export interface ResearchSource {
+  form_type: string;
+  accession_no: string;
+  url: string;
+  report_date?: string;
+}
+
+export interface ResearchReport {
+  symbol: string;
+  status: string;
+  report: string;
+  sources: ResearchSource[] | null;
+  model_version: string | null;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
 // ── API 에러 ──────────────────────────────────────────────────────────────────
 export class ApiError extends Error {
   constructor(
@@ -118,5 +148,14 @@ export const api = {
       body: { display_name?: string; preferred_language?: string },
     ): Promise<UserProfile> =>
       apiFetch("/users/me", { method: "PATCH", body: JSON.stringify(body), token }),
+  },
+
+  research: {
+    create: (symbol: string): Promise<ResearchJob> =>
+      apiFetch(`/research/${symbol}`, { method: "POST" }),
+    get: (symbol: string): Promise<ResearchReport> =>
+      apiFetch(`/research/${symbol}`),
+    getJob: (jobId: number): Promise<ResearchJob> =>
+      apiFetch(`/research/jobs/${jobId}`),
   },
 };
