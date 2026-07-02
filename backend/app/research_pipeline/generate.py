@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..config import PROMPTS_DIR, AppConfig, load_config
+from .research_config import PROMPTS_DIR, AppConfig, load_config
 from .assemble import assemble_report
 from .edgar import EdgarBundle, FilingRecord, SecClient, fiscal_label
 from .factpack import FactPack, build_factpack

@@ -11,7 +11,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from app.pipeline.generate import GenerateOptions, ResearchPipeline  # noqa: E402
+from app.research_pipeline.generate import GenerateOptions, ResearchPipeline  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:

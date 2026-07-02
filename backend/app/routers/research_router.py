@@ -9,11 +9,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 from supabase import AsyncClient, acreate_client
 
-from app.config import load_config
 from app.dependencies import get_db
-from app.pipeline.generate import GenerateOptions, ResearchPipeline
-from app.pipeline.utils import ensure_dir
-from app.services import cache_service
+from app.research_pipeline.generate import GenerateOptions, ResearchPipeline
+from app.research_pipeline.research_config import load_config
+from app.research_pipeline.utils import ensure_dir
+from app.services import research_cache_service
 
 
 logger = logging.getLogger(__name__)
@@ -63,10 +63,10 @@ async def create_research_job(
 ) -> ResearchJobResponse:
     normalized = _normalize_symbol(symbol)
     config = load_config()
-    await cache_service.cleanup_stale_jobs(db, config.research_job_timeout_minutes)
+    await research_cache_service.cleanup_stale_jobs(db, config.research_job_timeout_minutes)
 
-    ticker = await cache_service.ensure_ticker(db, normalized)
-    cached = await cache_service.get_cached_report(
+    ticker = await research_cache_service.ensure_ticker(db, normalized)
+    cached = await research_cache_service.get_cached_report(
         db,
         ticker_id=ticker["id"],
         ttl_hours=config.research_report_ttl_hours,
@@ -74,11 +74,13 @@ async def create_research_job(
     if cached:
         return _job_response(cached, normalized, cached=True, include_report=True)
 
-    active = await cache_service.get_active_job(db, ticker_id=ticker["id"])
+    active = await research_cache_service.get_active_job(db, ticker_id=ticker["id"])
     if active:
         return _job_response(active, normalized, cached=False, include_report=False)
 
-    job = await cache_service.create_job(db, ticker_id=ticker["id"])
+    # 인증 미도입 상태: 일일 한도는 사용자 식별(requested_by)에 의존하므로 비활성화.
+    # 재도입 시 get_current_user Depends + count_jobs_today 검사를 여기에 복구.
+    job = await research_cache_service.create_job(db, ticker_id=ticker["id"])
     background_tasks.add_task(run_research_job, int(job["id"]), int(ticker["id"]), normalized)
     return _job_response(job, normalized, cached=False, include_report=False)
 
@@ -93,8 +95,8 @@ async def get_latest_report(
     db: AsyncClient = Depends(get_db),
 ) -> LatestReportResponse:
     normalized = _normalize_symbol(symbol)
-    ticker = await cache_service.ensure_ticker(db, normalized)
-    row = await cache_service.get_latest_completed_report(db, ticker_id=ticker["id"])
+    ticker = await research_cache_service.ensure_ticker(db, normalized)
+    row = await research_cache_service.get_latest_completed_report(db, ticker_id=ticker["id"])
     if not row or not row.get("report_md"):
         raise HTTPException(
             status_code=404,
@@ -123,7 +125,7 @@ async def get_research_job(
     job_id: int,
     db: AsyncClient = Depends(get_db),
 ) -> ResearchJobResponse:
-    row = await cache_service.get_job(db, job_id)
+    row = await research_cache_service.get_job(db, job_id)
     if not row:
         raise HTTPException(
             status_code=404,
@@ -141,7 +143,7 @@ async def run_research_job(job_id: int, ticker_id: int, symbol: str) -> None:
         if not config.supabase_url or not config.supabase_service_role_key:
             raise RuntimeError("Supabase settings are not configured")
         db = await acreate_client(config.supabase_url, config.supabase_service_role_key)
-        await cache_service.mark_job_running(db, job_id, "리포트 생성 중")
+        await research_cache_service.mark_job_running(db, job_id, "리포트 생성 중")
 
         api_output_dir = ensure_dir(config.output_dir / "api")
         output_path = api_output_dir / f"{symbol}_{job_id}.md"
@@ -156,9 +158,9 @@ async def run_research_job(job_id: int, ticker_id: int, symbol: str) -> None:
             )
         )
 
-        await cache_service.update_progress(db, job_id, "산출물 저장 중")
+        await research_cache_service.update_progress(db, job_id, "산출물 저장 중")
         artifact_dir = _artifact_dir(output_path)
-        await cache_service.complete_job_from_artifacts(
+        await research_cache_service.complete_job_from_artifacts(
             db=db,
             job_id=job_id,
             ticker_id=ticker_id,
@@ -169,7 +171,7 @@ async def run_research_job(job_id: int, ticker_id: int, symbol: str) -> None:
     except Exception as exc:
         logger.exception("Research job failed: job_id=%s symbol=%s", job_id, symbol)
         if db is not None:
-            await cache_service.fail_job(db, job_id, str(exc))
+            await research_cache_service.fail_job(db, job_id, str(exc))
 
 
 def _normalize_symbol(symbol: str) -> str:

@@ -56,6 +56,11 @@ backend/env/
 backend/.env
 backend/.env.local
 
+# Deep Research 산출물/캐시
+backend/.cache/
+backend/reports/
+backend/**/*_artifacts/
+
 # IDE/Editor
 .vscode/
 .idea/

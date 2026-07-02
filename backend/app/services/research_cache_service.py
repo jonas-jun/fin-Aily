@@ -9,8 +9,8 @@ from typing import Any
 
 from supabase import AsyncClient
 
-from app.config import AppConfig
-from app.pipeline.utils import read_json
+from app.research_pipeline.research_config import AppConfig
+from app.research_pipeline.utils import read_json
 
 logger = logging.getLogger(__name__)
 
@@ -159,18 +159,39 @@ async def get_active_job(db: AsyncClient, ticker_id: int, lang: str = "ko") -> d
     return res.data[0] if res.data else None
 
 
-async def create_job(db: AsyncClient, ticker_id: int, lang: str = "ko") -> dict[str, Any]:
+async def create_job(
+    db: AsyncClient,
+    ticker_id: int,
+    requested_by: str | None = None,
+    lang: str = "ko",
+) -> dict[str, Any]:
     payload = {
         "ticker_id": ticker_id,
         "status": "pending",
         "progress": "대기 중",
         "lang": lang,
+        "requested_by": requested_by,
         "created_at": utc_now().isoformat(),
     }
     res = await db.table("research_reports").insert(payload).execute()
     if not res.data:
         raise RuntimeError("Failed to create research job")
     return res.data[0]
+
+
+async def count_jobs_today(db: AsyncClient, requested_by: str) -> int:
+    """Count jobs created by ``requested_by`` since UTC midnight (status agnostic)."""
+    start_of_day = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+    res = (
+        await db.table("research_reports")
+        .select("id", count="exact")
+        .eq("requested_by", requested_by)
+        .gte("created_at", start_of_day.isoformat())
+        .execute()
+    )
+    if res.count is not None:
+        return res.count
+    return len(res.data or [])
 
 
 async def get_job(db: AsyncClient, job_id: int) -> dict[str, Any] | None:
