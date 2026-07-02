@@ -1,0 +1,23 @@
+# 과업: 섹션 4 - 공시 변화 및 이익의 질(Quality of Earnings) 분석
+
+1. 연도별 Risk Factors 요약을 비교해 식별하세요:
+   신규 추가된 리스크 / 삭제된 공시 / 표현 강도가 바뀐 항목 / 세그먼트 보고 방식 변경
+   각 변화가 "왜 지금" 나타났는지 해석을 덧붙일 것
+2. 이익의 질 평가: 발생액 수준, SBC 의존도, 일회성 조정 빈도, non-GAAP 조정의 공격성, 현금전환율(FCF/순이익), 운전자본 움직임
+
+[출력 필드]
+- key_takeaway / data_gaps
+- filing_deltas: list[{change_type, description, year, significance}]
+- earnings_quality: list[{heading, paragraphs}]
+- quality_flags: list[str]
+
+[데이터]
+## 팩트팩
+{factpack}
+
+## 연도별 Risk Factors(Item 1A) 요약
+{risk_summaries}
+
+## 이익의 질 지표
+{qoe_metrics}
+

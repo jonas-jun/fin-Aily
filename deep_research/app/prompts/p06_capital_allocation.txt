@@ -1,0 +1,25 @@
+# 과업: 섹션 6 - 자본 배분 분석 (최근 5년)
+
+현금흐름 시계열을 근거로 경영진의 자본 배분 퀄리티를 평가하세요.
+
+1. 자사주 매입 vs SBC로 인한 주식 희석의 순효과를 발행주식수 추이로 검증
+2. M&A 트랙레코드 (규모와 이후 성과가 데이터로 확인되는 범위에서)
+3. 부채 발행/상환 패턴과 재무 여력 — 부채 상세 테이블이 제공되면 만기 구조·이자율까지 평가
+4. 배당 정책의 일관성과 지속가능성
+5. 재투자 수익률(ROIC 추세)과 자본 배분 우선순위의 정합성
+
+[출력 필드]
+- key_takeaway / data_gaps
+- allocation_analysis: list[{heading, paragraphs}]
+- allocation_grade: {grade, rationale}
+
+[데이터]
+## 팩트팩
+{factpack}
+
+## 자본 배분 시계열
+{capital_allocation_table}
+
+## 부채 상세 (최신 연차 공시 XBRL 주석 테이블)
+{debt_detail}
+

@@ -1,0 +1,14 @@
+defaults:
+  section_model: gemini-3.1-flash-lite
+  map_model: gemini-3.1-flash-lite
+  qa_model: gemini-3.1-flash-lite
+  temperature: 0.2
+  max_concurrency: 6
+sections:
+  p03_financial_quality.txt:
+    temperature: 0.1
+  p08_consensus_valuation.txt:
+    temperature: 0.1
+  qa:
+    temperature: 0.0
+

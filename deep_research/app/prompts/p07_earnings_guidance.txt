@@ -1,0 +1,28 @@
+# 과업: 섹션 7 - 실적 발표 및 가이던스 분석 (최근 8분기)
+
+분기별 실적 보도자료 요약을 근거로 분석하세요.
+
+1. 가이던스 변화 궤적: 분기별 상향/하향/유지, 코멘터리의 일관성, 수요 전망의 톤 변화
+2. 가이던스 신뢰도: 과거 가이던스 대비 실제 실적 (비교 데이터가 있는 범위에서)
+3. 경영진이 반복적으로 강조하는 주제와, 언급을 피하는 것으로 보이는 영역
+
+어닝스콜 트랜스크립트가 제공되지 않은 경우 보도자료 기반 분석의 한계를 data_gaps에 명시하세요.
+
+[출력 필드]
+- key_takeaway / data_gaps
+- guidance_trajectory: list[{quarter, action, summary}]
+- credibility_assessment: str
+- recurring_themes: list[str]
+- avoided_topics: list[{topic, evidence}]
+
+[데이터]
+## 팩트팩
+{factpack}
+
+## 분기별 실적 보도자료(8-K EX-99) 요약
+{earnings_releases}
+
+## 분기별 실제 실적 및 발표 시점 가이던스 (보도자료에서 구조화 추출)
+각 행의 가이던스를 다음 행(다음 분기)의 실제 실적과 비교해 상향/하향/달성 여부를 판정하세요.
+{guidance_vs_actual}
+
