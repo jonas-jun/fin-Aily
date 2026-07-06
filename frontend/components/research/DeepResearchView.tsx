@@ -6,10 +6,9 @@
  * 심층 리서치 상태 머신 컨테이너.
  *
  *   loading   ─(GET latest)─▶ has_report  : ReportView + "새로 생성"
- *                          └▶ no_report   : 소개 + "리포트 생성"
- *   generate 클릭 ─▶ POST create
- *      ├ cached/completed → GET latest → has_report
- *      └ job(pending)     → polling
+ *                          └▶ 404(7일 이내 리포트 없음) → 자동 POST create
+ *   POST create ─▶ cached/completed → GET latest → has_report
+ *               └▶ job(pending)     → polling
  *   polling ─(5초 setTimeout 재귀)─▶ completed → GET latest → has_report
  *                                 └▶ failed    → error + "다시 시도"
  *
@@ -23,7 +22,7 @@ import { api, ApiError, type ResearchJob, type ResearchReport } from "@/lib/api"
 import { ReportView } from "./ReportView";
 import { ResearchProgress } from "./ResearchProgress";
 
-type Phase = "loading" | "no_report" | "has_report" | "generating" | "error";
+type Phase = "loading" | "has_report" | "generating" | "error";
 
 const POLL_INTERVAL_MS = 5_000;
 const MAX_POLL_MS = 15 * 60 * 1_000; // 서버 잡 타임아웃과 별개로 클라이언트 상한
@@ -49,33 +48,6 @@ export function DeepResearchView({ symbol }: Props) {
       timeoutRef.current = null;
     }
   }, []);
-
-  // ── 진입 시: 최신 리포트 조회 ────────────────────────────────────────────────
-  useEffect(() => {
-    cancelled.current = false;
-
-    (async () => {
-      try {
-        const latest = await api.research.get(symbol);
-        if (cancelled.current) return;
-        setReport(latest);
-        setPhase("has_report");
-      } catch (err) {
-        if (cancelled.current) return;
-        if (err instanceof ApiError && err.status === 404) {
-          setPhase("no_report");
-        } else {
-          setErrorMsg(err instanceof Error ? err.message : "리포트를 불러오지 못했습니다.");
-          setPhase("error");
-        }
-      }
-    })();
-
-    return () => {
-      cancelled.current = true;
-      clearPoll();
-    };
-  }, [symbol, clearPoll]);
 
   // ── 폴링 한 사이클 ──────────────────────────────────────────────────────────
   const poll = useCallback(
@@ -117,7 +89,7 @@ export function DeepResearchView({ symbol }: Props) {
   );
 
   // ── 생성 시작 ───────────────────────────────────────────────────────────────
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(async (force = false) => {
     setErrorMsg(null);
     setJob(null);
     const startedAt = Date.now();
@@ -125,7 +97,7 @@ export function DeepResearchView({ symbol }: Props) {
     setPhase("generating");
 
     try {
-      const created = await api.research.create(symbol);
+      const created = await api.research.create(symbol, { force });
       if (cancelled.current) return;
 
       if (created.cached || (created.status === "completed" && created.report)) {
@@ -145,6 +117,33 @@ export function DeepResearchView({ symbol }: Props) {
     }
   }, [symbol, poll]);
 
+  // ── 진입 시: 최신 리포트 조회 (7일 이내 리포트 없으면 자동 생성) ──────────────────
+  useEffect(() => {
+    cancelled.current = false;
+
+    (async () => {
+      try {
+        const latest = await api.research.get(symbol);
+        if (cancelled.current) return;
+        setReport(latest);
+        setPhase("has_report");
+      } catch (err) {
+        if (cancelled.current) return;
+        if (err instanceof ApiError && err.status === 404) {
+          handleGenerate();
+        } else {
+          setErrorMsg(err instanceof Error ? err.message : "리포트를 불러오지 못했습니다.");
+          setPhase("error");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled.current = true;
+      clearPoll();
+    };
+  }, [symbol, clearPoll, handleGenerate]);
+
   // ── 렌더 ────────────────────────────────────────────────────────────────────
   if (phase === "loading") {
     return (
@@ -163,32 +162,10 @@ export function DeepResearchView({ symbol }: Props) {
       <div className="flex flex-col items-center gap-4 rounded-xl border border-red-200 bg-red-50 px-6 py-12 text-center">
         <p className="text-sm text-red-600">{errorMsg}</p>
         <button
-          onClick={handleGenerate}
+          onClick={() => handleGenerate()}
           className="rounded-lg bg-brand-green px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           다시 시도
-        </button>
-      </div>
-    );
-  }
-
-  if (phase === "no_report") {
-    return (
-      <div className="flex flex-col items-center gap-4 rounded-xl border border-slate-200 bg-white px-6 py-12 text-center">
-        <p className="text-2xl">📑</p>
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-slate-700">
-            {symbol}에 대한 심층 리서치 리포트가 아직 없습니다.
-          </p>
-          <p className="text-xs text-slate-400">
-            SEC 공시 기반으로 사업·재무·경쟁·밸류에이션을 분석합니다. 생성에 약 2~4분 걸립니다.
-          </p>
-        </div>
-        <button
-          onClick={handleGenerate}
-          className="rounded-lg bg-brand-green px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          리포트 생성
         </button>
       </div>
     );
@@ -199,7 +176,7 @@ export function DeepResearchView({ symbol }: Props) {
     <div>
       <div className="mb-3 flex justify-end">
         <button
-          onClick={handleGenerate}
+          onClick={() => handleGenerate(true)}
           className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
         >
           새로 생성

@@ -151,8 +151,8 @@ export const api = {
   },
 
   research: {
-    create: (symbol: string): Promise<ResearchJob> =>
-      apiFetch(`/research/${symbol}`, { method: "POST" }),
+    create: (symbol: string, opts?: { force?: boolean }): Promise<ResearchJob> =>
+      apiFetch(`/research/${symbol}${opts?.force ? "?force=true" : ""}`, { method: "POST" }),
     get: (symbol: string): Promise<ResearchReport> =>
       apiFetch(`/research/${symbol}`),
     getJob: (jobId: number): Promise<ResearchJob> =>

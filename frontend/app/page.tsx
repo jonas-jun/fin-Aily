@@ -4,21 +4,24 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TickerSearch } from "@/components/ui/TickerSearch";
 import { DigestCard } from "@/components/news/DigestCard";
+import { DeepLabLanding } from "@/components/research/DeepLabLanding";
 import { Logo } from "@/components/ui/Logo";
 import { api, type NewsResponse } from "@/lib/api";
 
-type TabType = "brief" | "pulse";
+type TabType = "brief" | "pulse" | "research";
 
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTab: TabType = searchParams.get("tab") === "pulse" ? "pulse" : "brief";
+  const tabParam = searchParams.get("tab");
+  const activeTab: TabType =
+    tabParam === "pulse" ? "pulse" : tabParam === "research" ? "research" : "brief";
 
   const [marketData, setMarketData] = useState<NewsResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
   const setActiveTab = (tab: TabType) => {
-    router.push(tab === "pulse" ? "/?tab=pulse" : "/");
+    router.push(tab === "brief" ? "/" : `/?tab=${tab}`);
   };
 
   useEffect(() => {
@@ -46,7 +49,9 @@ function HomeContent() {
         <p className="text-slate-500 text-sm sm:text-base max-w-md mx-auto leading-relaxed mt-4">
           {activeTab === "brief"
             ? "Get 10 AI-powered news highlights for any ticker."
-            : "Your AI assistant curates today's top market headlines."}
+            : activeTab === "pulse"
+              ? "Your AI assistant curates today's top market headlines."
+              : "SEC 공시를 분석해 종목별 심층 리서치 리포트를 생성합니다."}
         </p>
       </div>
 
@@ -72,6 +77,16 @@ function HomeContent() {
         >
           Market Pulse
         </button>
+        <button
+          onClick={() => setActiveTab("research")}
+          className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+            activeTab === "research"
+              ? "bg-white text-[#22C55E] shadow-md"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Deep Lab
+        </button>
       </div>
 
       {/* Content */}
@@ -79,6 +94,11 @@ function HomeContent() {
         {activeTab === "brief" ? (
           <div className="flex flex-col items-center gap-8 animate-in fade-in zoom-in-95">
             <TickerSearch />
+          </div>
+        ) : activeTab === "research" ? (
+          <div className="flex flex-col items-center gap-8 animate-in fade-in zoom-in-95">
+            <TickerSearch destination="research" />
+            <DeepLabLanding />
           </div>
         ) : (
           <div className="animate-in fade-in slide-in-from-bottom-4 space-y-10">

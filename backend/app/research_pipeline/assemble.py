@@ -18,7 +18,7 @@ def assemble_report(
     qa_issues: list[dict[str, Any]] | None = None,
 ) -> str:
     lines: list[str] = [
-        f"# {company_name}({ticker.upper()}) Deep Research",
+        f"# {company_name}({ticker.upper()}) Deep Lab Report",
         "",
         f"- 생성 시각: {generated_at}",
         "- 기준: SEC EDGAR, XBRL companyfacts, yfinance 사용 가능 데이터",

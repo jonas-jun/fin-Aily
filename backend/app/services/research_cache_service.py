@@ -127,24 +127,6 @@ async def get_cached_report(
     return res.data[0] if res.data else None
 
 
-async def get_latest_completed_report(
-    db: AsyncClient,
-    ticker_id: int,
-    lang: str = "ko",
-) -> dict[str, Any] | None:
-    res = (
-        await db.table("research_reports")
-        .select("*")
-        .eq("ticker_id", ticker_id)
-        .eq("lang", lang)
-        .eq("status", "completed")
-        .order("completed_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-    return res.data[0] if res.data else None
-
-
 async def get_active_job(db: AsyncClient, ticker_id: int, lang: str = "ko") -> dict[str, Any] | None:
     res = (
         await db.table("research_reports")

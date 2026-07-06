@@ -59,6 +59,7 @@ SYMBOL_PATTERN = re.compile(r"^[A-Z0-9][A-Z0-9.\-]{0,19}$")
 async def create_research_job(
     symbol: str,
     background_tasks: BackgroundTasks,
+    force: bool = False,
     db: AsyncClient = Depends(get_db),
 ) -> ResearchJobResponse:
     normalized = _normalize_symbol(symbol)
@@ -66,13 +67,14 @@ async def create_research_job(
     await research_cache_service.cleanup_stale_jobs(db, config.research_job_timeout_minutes)
 
     ticker = await research_cache_service.ensure_ticker(db, normalized)
-    cached = await research_cache_service.get_cached_report(
-        db,
-        ticker_id=ticker["id"],
-        ttl_hours=config.research_report_ttl_hours,
-    )
-    if cached:
-        return _job_response(cached, normalized, cached=True, include_report=True)
+    if not force:
+        cached = await research_cache_service.get_cached_report(
+            db,
+            ticker_id=ticker["id"],
+            ttl_hours=config.research_report_ttl_hours,
+        )
+        if cached:
+            return _job_response(cached, normalized, cached=True, include_report=True)
 
     active = await research_cache_service.get_active_job(db, ticker_id=ticker["id"])
     if active:
@@ -95,8 +97,13 @@ async def get_latest_report(
     db: AsyncClient = Depends(get_db),
 ) -> LatestReportResponse:
     normalized = _normalize_symbol(symbol)
+    config = load_config()
     ticker = await research_cache_service.ensure_ticker(db, normalized)
-    row = await research_cache_service.get_latest_completed_report(db, ticker_id=ticker["id"])
+    row = await research_cache_service.get_cached_report(
+        db,
+        ticker_id=ticker["id"],
+        ttl_hours=config.research_report_ttl_hours,
+    )
     if not row or not row.get("report_md"):
         raise HTTPException(
             status_code=404,
