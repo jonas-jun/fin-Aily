@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type TickerResult } from "@/lib/api";
 
-export function TickerSearch() {
+interface TickerSearchProps {
+  destination?: "brief" | "research";
+}
+
+export function TickerSearch({ destination = "brief" }: TickerSearchProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TickerResult[]>([]);
@@ -47,7 +51,7 @@ export function TickerSearch() {
   const handleSelect = (symbol: string) => {
     setQuery("");
     setOpen(false);
-    router.push(`/stock/${symbol}`);
+    router.push(destination === "research" ? `/stock/${symbol}/research` : `/stock/${symbol}`);
   };
 
   const handleSubmit = (e: React.FormEvent) => {

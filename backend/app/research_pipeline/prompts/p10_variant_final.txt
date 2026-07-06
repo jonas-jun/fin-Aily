@@ -1,0 +1,23 @@
+# 과업: 섹션 10 - Variant Perception 및 최종 평가
+
+섹션 2~9의 결론을 종합해 작성하세요. 새로운 사실·수치를 추가하지 마세요.
+
+1. Variant Perception: 시장 컨센서스가 놓치거나 오해하고 있는 지점은 무엇인가?
+2. 5개 축 평점 (1~10, 각 평점마다 근거 1~2문장 필수): 비즈니스 퀄리티 / 해자 내구성 / 경영진 퀄리티 / 재투자 퀄리티 / 재무 복원력
+3. 분기마다 모니터링해야 할 핵심 KPI 정확히 3개
+4. 투자 논거를 완전히 무효화(invalidate)할 구체적 시그널
+
+[출력 필드]
+- key_takeaway / data_gaps
+- variant_perception: list[str]
+- ratings: list[{axis, score, rationale}] 정확히 5개
+- monitoring_kpis: list[{kpi, why}] 정확히 3개
+- thesis_killers: list[str]
+
+[데이터]
+## 팩트팩
+{factpack}
+
+## 섹션별 핵심 결론
+{wave1_takeaways}
+

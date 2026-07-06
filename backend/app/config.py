@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     debug: bool = False
     cors_origins: list[str] = ["http://localhost:3000", "https://fin-aily.vercel.app"]
 
+    # Deep Research (심층 리서치)
+    edgar_user_agent: str = "fin-aily-us deep-research contact@example.com"
+    deep_research_cache_dir: str = ".cache"
+    deep_research_output_dir: str = "reports"
+    research_report_ttl_hours: int = 168
+    research_job_timeout_minutes: int = 15
+    research_api_use_llm: bool = True
+    research_api_run_qa: bool = False
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -23,6 +23,12 @@ AI 기술로 미국 주식 뉴스를 투자자 관점의 핵심 인사이트로 
 - Yahoo Finance RSS 기반으로 시장 전체 흐름 AI 요약
 - 별도 검색 없이 접속 즉시 현재 가장 뜨거운 경제 이슈 확인
 
+### Deep Research (심층 리서치)
+- 종목 페이지의 **심층 리서치** 탭(`/stock/{symbol}/research`)에서 SEC EDGAR 10-K/10-Q 공시 기반 애널리스트 수준 리포트 생성
+- Map-Reduce LLM 파이프라인으로 대용량 공시를 섹션별 병렬 요약 후 단일 리포트로 합성 (목차·표·출처 포함)
+- 생성은 백그라운드 잡으로 진행되며 프론트가 5초 간격 폴링으로 진행 상태 표시 (약 2~4분)
+- 완료 리포트는 168시간 캐시. 현재 **개인 사용 모드**라 로그인 없이 누구나 조회·생성 가능 (인증·사용자별 한도는 추후 재도입 예정, 코드는 `backend/app/dependencies.py`의 `get_current_user`에 보존)
+
 ---
 
 ## 기술 스택
@@ -53,20 +59,24 @@ AI 기술로 미국 주식 뉴스를 투자자 관점의 핵심 인사이트로 
 
 1. Supabase 대시보드에서 새 프로젝트 생성
 2. **Project Settings > API** 에서 `URL`, `anon key`, `service_role key` 복사
-3. **SQL Editor** 에서 마이그레이션 파일 실행:
+3. **SQL Editor** 에서 마이그레이션 파일을 순서대로 실행:
 
 ```
 backend/migrations/001_initial_schema.sql
+backend/migrations/002_research.sql
 ```
 
 ### 2. Backend
 
+뉴스 API와 심층 리서치 API가 **하나의 FastAPI 앱**으로 통합되어 있다. 프로세스 하나만 띄우면 전체 기능이 동작한다.
+
 ```bash
 cd backend
 cp .env.example .env
-# .env 파일에서 API 키 및 Supabase 정보 입력
+# .env 파일에서 API 키 및 Supabase 정보 입력 (심층 리서치용 EDGAR_USER_AGENT 등 포함)
 
 pip install -r requirements.txt
+# migrations/001_initial_schema.sql, migrations/002_research.sql 를 Supabase 프로젝트에 순서대로 실행
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -83,7 +93,7 @@ npm install
 npm run dev
 ```
 
-브라우저에서 `http://localhost:3000` 접속
+브라우저에서 `http://localhost:3000` 접속 — backend(8000) + frontend(3000) 두 프로세스만으로 브리핑·심층 리서치 전체 기능을 사용할 수 있다.
 
 ---
 
@@ -101,6 +111,15 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 APP_ENV=development
 DEBUG=true
 CORS_ORIGINS=["http://localhost:3000"]
+
+# Deep Research (심층 리서치)
+EDGAR_USER_AGENT=fin-aily-us deep-research your-email@example.com
+DEEP_RESEARCH_CACHE_DIR=.cache
+DEEP_RESEARCH_OUTPUT_DIR=reports
+RESEARCH_REPORT_TTL_HOURS=168
+RESEARCH_JOB_TIMEOUT_MINUTES=15
+RESEARCH_API_USE_LLM=true
+RESEARCH_API_RUN_QA=false
 ```
 
 ### Frontend (`frontend/.env.local`)
@@ -115,18 +134,18 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/v1
 
 ## API
 
+모든 엔드포인트는 하나의 backend(`backend/`, 포트 8000)에서 제공된다.
+
 | Method | Endpoint | 설명 |
 |---|---|---|
 | `GET` | `/v1/news/{symbol}` | 종목 최신 뉴스 수집 + AI 요약 |
 | `GET` | `/v1/news/market-pulse` | 시장 전체 뉴스 AI 요약 |
 | `GET` | `/v1/tickers/search?q={쿼리}` | 티커·종목명 자동완성 검색 (Rate Limit: 30회/분) |
+| `POST` | `/v1/research/{symbol}` | 심층 리서치 잡 시작 (캐시·진행 중 잡은 즉시 반환) |
+| `GET` | `/v1/research/{symbol}` | 최신 완료 리포트 조회 |
+| `GET` | `/v1/research/jobs/{job_id}` | 잡 상태·완료 리포트 폴링 |
 
----
-
-## 개발 예정
-
-### Deep Research (심층 리서치)
-SEC EDGAR 10-K/10-Q 공시 및 어닝스콜 트랜스크립트를 기반으로 애널리스트 수준의 종합 리포트를 생성하는 기능. Map-Reduce LLM 파이프라인으로 대용량 문서를 섹션별로 병렬 요약한 뒤 하나의 리포트로 합성.
+> 현재 개인 사용 모드로 `/v1/research/*`는 인증 없이 열려 있다. 인증 로직(`get_current_user`)은 `backend/app/dependencies.py`에 보존되어 있어 필요 시 각 라우터에 `Depends`로 다시 연결할 수 있다.
 
 ---
 

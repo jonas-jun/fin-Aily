@@ -7,6 +7,7 @@ frontend/out/
 frontend/.nuxt/
 frontend/.cache/
 frontend/.eslintcache
+frontend/*.tsbuildinfo
 frontend/.env
 frontend/.env.local
 frontend/.env.*.local
@@ -55,6 +56,11 @@ backend/ENV/
 backend/env/
 backend/.env
 backend/.env.local
+
+# Deep Research 산출물/캐시
+backend/.cache/
+backend/reports/
+backend/**/*_artifacts/
 
 # IDE/Editor
 .vscode/

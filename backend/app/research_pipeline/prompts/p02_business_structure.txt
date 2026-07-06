@@ -1,0 +1,32 @@
+# 과업: 섹션 2 - 사업 구조 및 내러티브 변화 분석 (최근 4년)
+
+아래 데이터를 근거로 분석하세요.
+
+1. 세그먼트별·지역별 매출 구성이 4년간 어떻게 변했는가 (증감 방향, 변곡점, 믹스 변화의 의미)
+2. 최근 인수·매각이 사업 구조에 미친 영향 (데이터에 나타난 범위에서)
+3. 연도별 공시 요약을 비교해 경영진 내러티브의 변화를 추적:
+   - 새로 강조되기 시작한 키워드·주제 (특히 AI 관련 포지셔닝 변화)
+   - 사라지거나 축소된 우선순위
+   - 전략적 피벗 신호
+4. 구조적으로 중요도가 커지는 세그먼트와 약해지는 세그먼트를 판별
+
+[출력 필드]
+- key_takeaway / data_gaps
+- segment_shift_analysis: list[str]
+- narrative_shifts: list[{theme, direction, evidence, implication}]
+- rising_segments: list[{segment, rationale}]
+- weakening_segments: list[{segment, rationale}]
+
+[데이터]
+## 팩트팩
+{factpack}
+
+## 세그먼트 매출 시계열 (연차 공시 XBRL 세그먼트·매출 분해 테이블, 원문 그대로)
+{segment_table}
+
+## 연도별 10-K 사업 개요(Item 1) 요약
+{item1_summaries}
+
+## 연도별 MD&A(Item 7) 요약
+{mdna_summaries}
+

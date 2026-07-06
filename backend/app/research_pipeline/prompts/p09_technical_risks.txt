@@ -1,0 +1,21 @@
+# 과업: 섹션 9 - 기술적 분석(간략) 및 핵심 리스크
+
+1. 기술적 지표표를 근거로 간략히 서술 (전체 3문단 이내, 펀더멘털 대비 부차적 비중 유지):
+   장기 추세, 주요 지지/저항 수준(표의 Support/Resistance Candidates 행은 1년 스윙 고점·저점 클러스터), S&P500 대비 상대강도, 이동평균 배열, 거래량 특징
+2. 리스크를 두 층위로 명확히 구분:
+   - 단기 실행 리스크: 분기 실적, 가이던스 달성, 제품 출시 등
+   - 장기 구조적/실존적 리스크: 기술 대체, 규제, 경쟁 구조 변화, 비즈니스 모델 침식
+
+[출력 필드]
+- key_takeaway / data_gaps
+- technical_summary: list[str] 최대 3문단
+- short_term_risks: list[{risk, rationale}]
+- structural_risks: list[{risk, rationale}]
+
+[데이터]
+## 팩트팩
+{factpack}
+
+## 기술적 지표
+{technical_table}
+

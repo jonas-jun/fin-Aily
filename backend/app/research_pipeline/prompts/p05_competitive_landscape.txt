@@ -1,0 +1,24 @@
+# 과업: 섹션 5 - 경쟁 구도 및 고객 집중도 분석
+
+1. 주요 세그먼트별 경쟁 포지션: 주요 경쟁사, 상대적 시장 지위, 경쟁 우위/열위(전환비용, 가격결정력, 브랜드/네트워크/데이터/AI 우위 관점)
+2. 피어 비교표를 해석: 성장률·마진·밸류에이션·자본 집약도에서 동사의 상대적 위치
+3. 매출·공급망 집중 리스크: 공시된 고객 집중도, 하이퍼스케일러/플랫폼/유통사/정부 의존, 중국·규제·지정학 노출
+
+이 섹션은 제공 데이터가 제한적일 수 있습니다. 데이터에 없는 경쟁사 정보를 일반 지식으로 채우지 말고, 확인 불가 항목을 data_gaps에 적극적으로 기록하세요.
+
+[출력 필드]
+- key_takeaway / data_gaps
+- segment_competition: list[{segment, competitors, position, advantages, disadvantages}]
+- peer_comparison_analysis: list[str]
+- concentration_risks: list[{risk, evidence}]
+
+[데이터]
+## 팩트팩
+{factpack}
+
+## 피어 비교표
+{peer_table}
+
+## 10-K 경쟁·고객 집중 관련 서술 발췌
+{competition_excerpts}
+

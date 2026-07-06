@@ -1,0 +1,30 @@
+# 과업: 섹션 8 - 애널리스트 컨센서스 및 밸류에이션 분석
+
+1. 향후 2개 회계연도 컨센서스(매출, EPS)와 추정치 리비전 방향(EPS 리비전 행: 현재 vs 30/90일 전), 애널리스트 간 분산도(Low~High 범위, 목표주가 분포) 해석 — 분산이 크다 = 시장의 확신이 낮다는 신호로 활용
+2. 밸류에이션 지표(forward P/E, EV/EBITDA, EV/Sales, FCF Yield, PEG)를 자체 역사적 밴드(제공된 trailing 근사 밴드) 및 피어 비교표와 비교 - "지금 비싼가, 싼가, 왜 그런 멀티플을 받는가"
+3. 확률적 시나리오 분석: Bull / Base / Bear 각각의 핵심 전제와 밸류에이션 함의
+4. 현재 주가에 내재된 가정 판정 - "What must go right?"
+
+[출력 필드]
+- key_takeaway / data_gaps
+- consensus_analysis: list[str]
+- valuation_analysis: list[{heading, paragraphs}]
+- scenarios: list[{case, probability_pct, assumptions, implication}] 정확히 3개
+- embedded_expectations: str
+
+[데이터]
+## 팩트팩
+{factpack}
+
+## 컨센서스·밸류에이션 표
+{consensus_table}
+
+## 애널리스트 상세 추정치 (분기·연도별 EPS/매출 컨센서스, 리비전, 목표주가 분포)
+{estimate_table}
+
+## 역사적 밸류에이션 밴드 (5년, trailing 근사)
+{valuation_band_table}
+
+## 피어 비교표
+{peer_table}
+
