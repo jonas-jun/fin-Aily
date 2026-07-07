@@ -5,12 +5,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from app.llm import GeminiClient, gather_limited
+from app.time_utils import utc_now_iso
+
 from .research_config import PROMPTS_DIR, AppConfig, load_config
 from .assemble import assemble_report
 from .edgar import EdgarBundle, FilingRecord, SecClient, fiscal_label
 from .factpack import FactPack, build_factpack
 from .financials import build_financial_bundle
-from .llm import GeminiClient, gather_limited
 from .sections import (
     QA_SCHEMA,
     SECTION_SPECS,
@@ -38,7 +40,6 @@ from .utils import (
     render_template,
     simple_summary,
     trim_text,
-    utc_now_iso,
     write_json,
 )
 

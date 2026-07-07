@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -11,67 +10,12 @@ from supabase import AsyncClient
 
 from app.research_pipeline.research_config import AppConfig
 from app.research_pipeline.utils import read_json
+from app.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
 
 ACTIVE_STATUSES = ["pending", "running"]
-
-
-def utc_now() -> datetime:
-    return datetime.now(tz=timezone.utc).replace(microsecond=0)
-
-
-async def ensure_ticker(db: AsyncClient, symbol: str) -> dict[str, Any]:
-    normalized = symbol.upper().strip()
-    existing = (
-        await db.table("tickers")
-        .select("*")
-        .eq("symbol", normalized)
-        .limit(1)
-        .execute()
-    )
-    if existing.data:
-        return existing.data[0]
-
-    profile = await asyncio.to_thread(_lookup_ticker_profile, normalized)
-    payload = {
-        "symbol": normalized,
-        "name": profile.get("name") or normalized,
-        "exchange": profile.get("exchange"),
-        "sector": profile.get("sector"),
-    }
-    try:
-        inserted = await db.table("tickers").insert(payload).execute()
-        if inserted.data:
-            return inserted.data[0]
-    except Exception:
-        logger.info("Ticker insert raced or failed; retrying select: %s", normalized)
-
-    retry = (
-        await db.table("tickers")
-        .select("*")
-        .eq("symbol", normalized)
-        .limit(1)
-        .execute()
-    )
-    if retry.data:
-        return retry.data[0]
-    raise RuntimeError(f"Unable to create ticker row for {normalized}")
-
-
-def _lookup_ticker_profile(symbol: str) -> dict[str, Any]:
-    try:
-        import yfinance as yf  # type: ignore
-
-        info = yf.Ticker(symbol).info or {}
-        return {
-            "name": info.get("longName") or info.get("shortName"),
-            "exchange": info.get("exchange"),
-            "sector": info.get("sector"),
-        }
-    except Exception:
-        return {"name": symbol, "exchange": None, "sector": None}
 
 
 async def cleanup_stale_jobs(db: AsyncClient, timeout_minutes: int) -> None:

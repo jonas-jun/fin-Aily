@@ -7,7 +7,7 @@ news_router.py
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -19,7 +19,7 @@ from app.services.article_cache_service import (
     save_articles,
 )
 from app.services.cache_service import get_cached_digest, save_digest_cache
-from app.services.news_service import RawArticle, fetch_articles, fetch_market_news, get_company_name
+from app.services.news_service import RawArticle, fetch_articles, fetch_market_news
 from app.services.summarization_service import (
     ArticleInput,
     ArticleOut,
@@ -28,6 +28,8 @@ from app.services.summarization_service import (
     SentimentOut,
     summarize_articles,
 )
+from app.services.ticker_service import ensure_ticker
+from app.time_utils import utc_now_iso
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/news", tags=["news"])
@@ -169,7 +171,7 @@ async def get_market_pulse(
     return NewsResponse(
         symbol="MARKET",
         company_name="Yahoo Finance",
-        last_updated=datetime.now(timezone.utc).isoformat(),
+        last_updated=utc_now_iso(),
         digest=digest_out,
         articles=_build_article_outs(raw_articles),
     )
@@ -191,8 +193,8 @@ async def get_news(
     1시간 이내에 수집된 기사가 있으면 DB 캐시를 재사용한다.
     """
     upper_symbol = symbol.upper()
-    company = get_company_name(upper_symbol)
-    ticker_id = await get_or_create_ticker(db, upper_symbol, company)
+    ticker = await ensure_ticker(db, upper_symbol)
+    ticker_id, company = ticker["id"], ticker["name"]
 
     raw_articles = await _get_or_fetch_articles(
         db, ticker_id, lambda: fetch_articles(upper_symbol, limit), limit=limit
@@ -217,7 +219,7 @@ async def get_news(
     return NewsResponse(
         symbol=upper_symbol,
         company_name=company,
-        last_updated=datetime.now(timezone.utc).isoformat(),
+        last_updated=utc_now_iso(),
         digest=digest_out,
         articles=_build_article_outs(raw_articles),
     )

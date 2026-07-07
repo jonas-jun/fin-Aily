@@ -5,15 +5,15 @@ summarization_service.py
 사용자 커스텀 프롬프트를 반영하여 시장 뉴스를 요약한다.
 """
 
-import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
-from google import genai
 from pydantic import BaseModel
 
 from app.config import get_feature_config
+from app.llm import GeminiClient, parse_json_response
+from app.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -125,17 +125,6 @@ https://finance.yahoo.com
 ## 뉴스 데이터
 {articles_block}"""
 
-def _parse_llm_response(raw_text: str) -> dict:
-    raw_text = raw_text.strip()
-    if "```json" in raw_text:
-        raw_text = raw_text.split("```json")[1].split("```")[0]
-    elif "```" in raw_text:
-        raw_text = raw_text.split("```")[1].split("```")[0]
-    try:
-        return json.loads(raw_text)
-    except json.JSONDecodeError:
-        raise ValueError("LLM 응답 파싱 실패")
-
 async def summarize_articles(
     symbol: str,
     company_name: str,
@@ -150,14 +139,14 @@ async def summarize_articles(
     feat_config = get_feature_config(feature)
     prompt = _build_prompt(symbol, company_name, articles[:MAX_ARTICLES], lang)
 
-    client = genai.Client(api_key=api_key)
-    response = await client.aio.models.generate_content(
-        model=feat_config.model,
-        contents=prompt,
-    )
-    raw_text, model_version = response.text, feat_config.model
+    client = GeminiClient(api_key=api_key)
+    raw_text = await client.generate_text(model=feat_config.model, user_prompt=prompt)
+    model_version = feat_config.model
 
-    parsed = _parse_llm_response(raw_text)
+    try:
+        parsed = parse_json_response(raw_text)
+    except Exception:
+        raise ValueError("LLM 응답 파싱 실패")
     bullets = [SummaryPoint(**b) for b in parsed.get("summary", [])]
 
     return DigestResult(
@@ -167,5 +156,5 @@ async def summarize_articles(
         model_version=model_version,
         article_ids=[a.id for a in articles[:MAX_ARTICLES]],
         article_count=len(articles[:MAX_ARTICLES]),
-        created_at=datetime.now(tz=timezone.utc),
+        created_at=utc_now(),
     )

@@ -3,17 +3,19 @@ article_cache_service.py
 ────────────────────────
 뉴스 기사 DB 캐싱 서비스.
 - 1시간 TTL로 기사를 캐싱하여 외부 API 중복 호출을 방지한다.
-- ticker 조회/생성 헬퍼를 제공한다.
+- ticker 조회/생성 헬퍼를 제공한다 (실제 종목은 app.services.ticker_service를
+  사용하고, get_or_create_ticker는 "MARKET" 같은 의사 티커 전용).
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Optional
 
 from supabase import AsyncClient
 
 from app.config import get_cache_config
 from app.services.news_service import RawArticle
+from app.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ async def get_cached_articles(
     limit: int = 10,
 ) -> Optional[list[dict]]:
 
-    cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=get_cache_config().article_ttl_hours)
+    cutoff = utc_now() - timedelta(hours=get_cache_config().article_ttl_hours)
 
     res = (
         await db.table("news_articles")
