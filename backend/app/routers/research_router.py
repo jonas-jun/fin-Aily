@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from pathlib import Path
@@ -10,8 +11,9 @@ from pydantic import BaseModel, Field
 from supabase import AsyncClient, acreate_client
 
 from app.dependencies import get_db
+from app.research_pipeline.edgar import SecClient
 from app.research_pipeline.generate import GenerateOptions, ResearchPipeline
-from app.research_pipeline.research_config import load_config
+from app.research_pipeline.research_config import AppConfig, load_config
 from app.research_pipeline.utils import ensure_dir
 from app.services import research_cache_service
 
@@ -64,6 +66,7 @@ async def create_research_job(
 ) -> ResearchJobResponse:
     normalized = _normalize_symbol(symbol)
     config = load_config()
+    await _ensure_known_symbol(normalized, config)
     await research_cache_service.cleanup_stale_jobs(db, config.research_job_timeout_minutes)
 
     ticker = await research_cache_service.ensure_ticker(db, normalized)
@@ -179,6 +182,27 @@ async def run_research_job(job_id: int, ticker_id: int, symbol: str) -> None:
         logger.exception("Research job failed: job_id=%s symbol=%s", job_id, symbol)
         if db is not None:
             await research_cache_service.fail_job(db, job_id, str(exc))
+
+
+async def _ensure_known_symbol(symbol: str, config: AppConfig) -> None:
+    """SEC EDGAR 티커 맵에 존재하는 심볼인지 사전 확인한다.
+
+    SEC 조회 자체가 실패(네트워크 순단 등)하면 검증을 통과시켜 잡 생성을
+    막지 않는다 — 최종 방어는 ResearchPipeline.run()의 cik None 체크가 맡는다.
+    """
+    sec = SecClient(config.edgar_user_agent, config.cache_dir / "sec")
+    try:
+        await asyncio.to_thread(sec.resolve_ticker, symbol)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=ErrorBody(
+                code="UNKNOWN_SYMBOL",
+                message=f"SEC EDGAR에서 찾을 수 없는 심볼입니다: {symbol}",
+            ).model_dump(),
+        ) from exc
+    except Exception:
+        logger.warning("SEC ticker lookup failed for %s; allowing job creation", symbol, exc_info=True)
 
 
 def _normalize_symbol(symbol: str) -> str:

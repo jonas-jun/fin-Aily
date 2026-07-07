@@ -70,6 +70,9 @@ class ResearchPipeline:
 
         sec = SecClient(self.config.edgar_user_agent, self.config.cache_dir / "sec")
         edgar = sec.collect_company_bundle(ticker)
+        if edgar.identity.cik is None:
+            raise ValueError(f"Ticker not found on SEC EDGAR: {ticker} ({'; '.join(edgar.errors)})")
+
         companyfacts = None
         if edgar.identity.cik is not None:
             try:

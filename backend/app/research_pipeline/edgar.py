@@ -131,13 +131,21 @@ class SecClient:
             "company_tickers.json",
             ttl_seconds=86400,
         )
-        for value in payload.values():
-            if str(value.get("ticker", "")).upper() == ticker_upper:
-                return CompanyIdentity(
-                    ticker=ticker_upper,
-                    cik=int(value["cik_str"]),
-                    company_name=str(value.get("title") or ticker_upper),
-                )
+        candidates = [ticker_upper]
+        # SEC 표기(BRK-B)와 사용자 입력(BRK.B)이 다를 수 있어 클래스 주식 구분자를 상호 변환해 재시도한다.
+        if "." in ticker_upper:
+            candidates.append(ticker_upper.replace(".", "-"))
+        elif "-" in ticker_upper:
+            candidates.append(ticker_upper.replace("-", "."))
+
+        for candidate in candidates:
+            for value in payload.values():
+                if str(value.get("ticker", "")).upper() == candidate:
+                    return CompanyIdentity(
+                        ticker=ticker_upper,
+                        cik=int(value["cik_str"]),
+                        company_name=str(value.get("title") or ticker_upper),
+                    )
         raise ValueError(f"Unable to resolve CIK for ticker: {ticker_upper}")
 
     def submissions(self, cik: int) -> dict[str, Any]:
