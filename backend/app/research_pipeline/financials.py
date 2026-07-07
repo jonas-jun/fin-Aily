@@ -220,11 +220,7 @@ def _value(series: dict[str, dict[int, dict[str, Any]]], metric: str, year: int)
     return float(item["value"])
 
 
-def _usd_m(value: float | None) -> float | None:
-    return None if value is None else value / 1_000_000
-
-
-def _shares_m(value: float | None) -> float | None:
+def _to_millions(value: float | None) -> float | None:
     return None if value is None else value / 1_000_000
 
 
@@ -268,18 +264,18 @@ def _build_financial_rows(
         rows.append(
             {
                 "FY": f"FY{year}",
-                "Revenue": format_money_m(_usd_m(revenue)),
+                "Revenue": format_money_m(_to_millions(revenue)),
                 "YoY": format_pct(revenue_yoy),
                 "GPM": format_pct(_pct(gross_profit, revenue)),
                 "OPM": format_pct(_pct(operating_income, revenue)),
                 "NPM": format_pct(_pct(net_income, revenue)),
-                "FCF": format_money_m(_usd_m(fcf)),
+                "FCF": format_money_m(_to_millions(fcf)),
                 "FCF Margin": format_pct(_pct(fcf, revenue)),
                 "SBC / Revenue": format_pct(_pct(sbc, revenue)),
                 "R&D / Revenue": format_pct(_pct(rd, revenue)),
                 "Capex / Revenue": format_pct(_pct(capex, revenue)),
                 "ROIC": format_pct(roic),
-                "Shares": format_number(_shares_m(shares), 1),
+                "Shares": format_number(_to_millions(shares), 1),
             }
         )
 
@@ -350,13 +346,13 @@ def _build_qoe_rows(series: dict[str, dict[int, dict[str, Any]]], years: list[in
                 "FY": f"FY{year}",
                 "Accrual Ratio": format_pct(_pct(None if net_income is None or cfo is None else net_income - cfo, avg_assets)),
                 "FCF / Net Income": format_pct(_pct(fcf, net_income)),
-                "Working Capital": format_money_m(_usd_m(working_capital)),
-                "SBC": format_money_m(_usd_m(_value(series, "sbc", year))),
-                "D&A": format_money_m(_usd_m(_value(series, "dna", year))),
-                "Deferred Tax": format_money_m(_usd_m(_value(series, "deferred_tax", year))),
-                "ΔAR": format_money_m(_usd_m(_value(series, "ar_change", year))),
-                "ΔInventory": format_money_m(_usd_m(_value(series, "inventory_change", year))),
-                "ΔAP": format_money_m(_usd_m(_value(series, "ap_change", year))),
+                "Working Capital": format_money_m(_to_millions(working_capital)),
+                "SBC": format_money_m(_to_millions(_value(series, "sbc", year))),
+                "D&A": format_money_m(_to_millions(_value(series, "dna", year))),
+                "Deferred Tax": format_money_m(_to_millions(_value(series, "deferred_tax", year))),
+                "ΔAR": format_money_m(_to_millions(_value(series, "ar_change", year))),
+                "ΔInventory": format_money_m(_to_millions(_value(series, "inventory_change", year))),
+                "ΔAP": format_money_m(_to_millions(_value(series, "ap_change", year))),
             }
         )
     return rows
@@ -368,12 +364,12 @@ def _build_capital_rows(series: dict[str, dict[int, dict[str, Any]]], years: lis
         rows.append(
             {
                 "FY": f"FY{year}",
-                "Buybacks": format_money_m(_usd_m(_value(series, "buybacks", year))),
-                "Dividends": format_money_m(_usd_m(_value(series, "dividends", year))),
-                "Acquisitions": format_money_m(_usd_m(_value(series, "acquisitions", year))),
-                "Debt Issued": format_money_m(_usd_m(_value(series, "debt_issued", year))),
-                "Debt Repaid": format_money_m(_usd_m(_value(series, "debt_repaid", year))),
-                "Shares": format_number(_shares_m(_value(series, "shares", year)), 1),
+                "Buybacks": format_money_m(_to_millions(_value(series, "buybacks", year))),
+                "Dividends": format_money_m(_to_millions(_value(series, "dividends", year))),
+                "Acquisitions": format_money_m(_to_millions(_value(series, "acquisitions", year))),
+                "Debt Issued": format_money_m(_to_millions(_value(series, "debt_issued", year))),
+                "Debt Repaid": format_money_m(_to_millions(_value(series, "debt_repaid", year))),
+                "Shares": format_number(_to_millions(_value(series, "shares", year)), 1),
             }
         )
     return rows

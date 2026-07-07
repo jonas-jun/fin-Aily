@@ -1,3 +1,10 @@
+"""
+llm.py
+──────
+Gemini 호출 공용 클라이언트. 뉴스 요약(summarization_service)과
+심층 리서치 파이프라인(research_pipeline)이 함께 사용한다.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -11,7 +18,8 @@ class LLMUnavailable(RuntimeError):
     pass
 
 
-def _parse_json_text(text: str) -> dict[str, Any]:
+def parse_json_response(text: str) -> dict[str, Any]:
+    """```json 코드펜스를 벗기고 JSON으로 파싱한다. 실패 시 첫 {...} 블록으로 재시도한다."""
     clean = text.strip()
     if clean.startswith("```"):
         clean = re.sub(r"^```(?:json)?", "", clean).strip()
@@ -64,15 +72,15 @@ class GeminiClient:
             text = "".join(getattr(part, "text", "") for part in parts)
         if not text:
             raise RuntimeError("Gemini returned an empty response")
-        return _parse_json_text(text)
+        return parse_json_response(text)
 
     async def generate_text(
         self,
         *,
         model: str,
-        system_prompt: str,
+        system_prompt: str | None = None,
         user_prompt: str,
-        temperature: float,
+        temperature: float = 0.2,
     ) -> str:
         if not self.api_key:
             raise LLMUnavailable("GEMINI_API_KEY is not configured")
@@ -103,4 +111,3 @@ async def gather_limited(limit: int, *coros: Any) -> list[Any]:
             return await coro
 
     return await asyncio.gather(*(run(coro) for coro in coros))
-

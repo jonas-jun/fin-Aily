@@ -3,13 +3,9 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import asdict, is_dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Iterable
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def ensure_dir(path: Path) -> Path:

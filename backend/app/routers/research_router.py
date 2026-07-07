@@ -8,14 +8,14 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
-from supabase import AsyncClient, acreate_client
+from supabase import AsyncClient
 
-from app.dependencies import get_db
+from app.dependencies import create_db_client, get_db
 from app.research_pipeline.edgar import SecClient
 from app.research_pipeline.generate import GenerateOptions, ResearchPipeline
 from app.research_pipeline.research_config import AppConfig, load_config
 from app.research_pipeline.utils import ensure_dir
-from app.services import research_cache_service
+from app.services import research_cache_service, ticker_service
 
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ async def create_research_job(
     await _ensure_known_symbol(normalized, config)
     await research_cache_service.cleanup_stale_jobs(db, config.research_job_timeout_minutes)
 
-    ticker = await research_cache_service.ensure_ticker(db, normalized)
+    ticker = await ticker_service.ensure_ticker(db, normalized)
     if not force:
         cached = await research_cache_service.get_cached_report(
             db,
@@ -101,7 +101,7 @@ async def get_latest_report(
 ) -> LatestReportResponse:
     normalized = _normalize_symbol(symbol)
     config = load_config()
-    ticker = await research_cache_service.ensure_ticker(db, normalized)
+    ticker = await ticker_service.ensure_ticker(db, normalized)
     row = await research_cache_service.get_cached_report(
         db,
         ticker_id=ticker["id"],
@@ -152,7 +152,7 @@ async def run_research_job(job_id: int, ticker_id: int, symbol: str) -> None:
     try:
         if not config.supabase_url or not config.supabase_service_role_key:
             raise RuntimeError("Supabase settings are not configured")
-        db = await acreate_client(config.supabase_url, config.supabase_service_role_key)
+        db = await create_db_client()
         await research_cache_service.mark_job_running(db, job_id, "리포트 생성 중")
 
         api_output_dir = ensure_dir(config.output_dir / "api")
