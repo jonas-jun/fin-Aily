@@ -2,8 +2,8 @@
 news_service.py
 ───────────────
 뉴스 수집 서비스.
-yfinance → RSS(MarketWatch) 순으로 수집을 시도하며, 
-시장 전체 뉴스를 위한 MarketWatch 전용 수집 기능을 제공한다.
+yfinance → RSS(Yahoo Finance) 순으로 수집을 시도하며,
+시장 전체 뉴스를 위한 Yahoo Finance RSS 수집 기능을 제공한다.
 """
 
 import logging
@@ -63,12 +63,9 @@ async def fetch_articles(symbol: str, limit: int = 10) -> list[RawArticle]:
     return articles[:limit]
 
 async def fetch_market_news(limit: int = 10) -> list[RawArticle]:
-    """
-    Yahoo Finance 또는 MarketWatch의 금융 시장 전용 RSS에서 최신 뉴스를 수집한다.
-    """
-    # 사용자가 제안한 대로 Yahoo Finance를 사용하거나 MarketWatch의 시장 전용 피드를 선택합니다.
-    url = RSS_FEEDS["Yahoo_Finance"] # 또는 RSS_FEEDS["MarketWatch_Market"]
-    
+    """Yahoo Finance 종합 금융 RSS에서 최신 시장 뉴스를 수집한다."""
+    url = RSS_FEEDS["Yahoo_Finance"]
+
     articles = []
     try:
         feed = feedparser.parse(url)
@@ -78,20 +75,16 @@ async def fetch_market_news(limit: int = 10) -> list[RawArticle]:
                 datetime(*pub[:6], tzinfo=timezone.utc)
                 if pub else datetime.now(timezone.utc)
             )
-            
-            # 소스 이름 동적 할당
-            source_name = "Yahoo Finance" if "yahoo" in url else "MarketWatch"
-            
             articles.append(RawArticle(
                 title=entry.get("title", ""),
                 url=entry.get("link", ""),
-                source=source_name,
+                source="Yahoo Finance",
                 published_at=pub_dt,
                 raw_content=entry.get("summary", "") or _scrape_body(entry.get("link", "")) or entry.get("title", ""),
             ))
     except Exception as e:
         logger.error(f"{url} RSS 수집 오류: {e}")
-    
+
     return articles
 
 def _parse_pub_time(item: dict, content: dict) -> Optional[datetime]:
@@ -137,8 +130,6 @@ async def _fetch_from_yfinance(symbol: str, limit: int) -> list[RawArticle]:
             title = item.get("title") or content.get("title", "")
             if not title:
                 continue
-            raw_text = content.get("body", "") or content.get("summary", "") or _scrape_body(url) or title
-            pub_dt = _parse_pub_time(item, content)
             # yfinance 0.2.48+: 원문 URL은 content.clickThroughUrl에 있음
             # 값이 None인 경우를 대비해 or {} 패턴 사용
             url = (
@@ -147,6 +138,8 @@ async def _fetch_from_yfinance(symbol: str, limit: int) -> list[RawArticle]:
                 or (content.get("canonicalUrl") or {}).get("url", "")
                 or item.get("url", "")
             )
+            raw_text = content.get("body", "") or content.get("summary", "") or _scrape_body(url) or title
+            pub_dt = _parse_pub_time(item, content)
             articles.append(RawArticle(
                 title=title,
                 url=url,
