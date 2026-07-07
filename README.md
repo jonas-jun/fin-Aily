@@ -27,7 +27,7 @@ AI 기술로 미국 주식 뉴스를 투자자 관점의 핵심 인사이트로 
 - 홈의 **Deep Lab** 탭에서 티커 검색 → 리서치 페이지(`/stock/{symbol}/research`)로 진입, SEC EDGAR 10-K/10-Q 공시 기반 애널리스트 수준 리포트 생성
 - Map-Reduce LLM 파이프라인으로 대용량 공시를 섹션별 병렬 요약 후 단일 리포트로 합성 (목차·표·출처 포함)
 - 생성은 백그라운드 잡으로 진행되며 프론트가 5초 간격 폴링으로 진행 상태 표시 (약 2~4분)
-- 완료 리포트는 168시간 캐시. 현재 **개인 사용 모드**라 로그인 없이 누구나 조회·생성 가능 (인증·사용자별 한도는 추후 재도입 예정, 코드는 `backend/app/dependencies.py`의 `get_current_user`에 보존)
+- 완료 리포트는 168시간 캐시. 현재 **개인 사용 모드**라 로그인 없이 누구나 조회·생성 가능 (인증·사용자별 한도는 추후 재도입 예정, 재도입 절차는 GitHub 이슈 #8에 문서화)
 
 ---
 
@@ -41,7 +41,6 @@ AI 기술로 미국 주식 뉴스를 투자자 관점의 핵심 인사이트로 
 | Database | Supabase (PostgreSQL) |
 | Frontend | Next.js (App Router), TypeScript |
 | 스타일 | Tailwind CSS |
-| Auth | Supabase Auth |
 | 배포 | Backend: Google Cloud Run · Frontend: Vercel |
 
 ---
@@ -58,7 +57,7 @@ AI 기술로 미국 주식 뉴스를 투자자 관점의 핵심 인사이트로 
 ### 1. Supabase 설정
 
 1. Supabase 대시보드에서 새 프로젝트 생성
-2. **Project Settings > API** 에서 `URL`, `anon key`, `service_role key` 복사
+2. **Project Settings > API** 에서 `URL`, `service_role key` 복사
 3. **SQL Editor** 에서 마이그레이션 파일을 순서대로 실행:
 
 ```
@@ -87,7 +86,7 @@ Swagger UI: `http://localhost:8000/docs` (`.env`에 `DEBUG=true` 필요)
 ```bash
 cd frontend
 cp .env.local.example .env.local
-# .env.local 파일에서 Supabase 정보 입력
+# .env.local 파일에서 API URL 입력
 
 npm install
 npm run dev
@@ -124,8 +123,6 @@ RESEARCH_API_RUN_QA=false
 ### Frontend (`frontend/.env.local`)
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 NEXT_PUBLIC_API_URL=http://localhost:8000/v1
 ```
 
