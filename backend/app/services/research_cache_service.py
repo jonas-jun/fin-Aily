@@ -161,21 +161,6 @@ async def create_job(
     return res.data[0]
 
 
-async def count_jobs_today(db: AsyncClient, requested_by: str) -> int:
-    """Count jobs created by ``requested_by`` since UTC midnight (status agnostic)."""
-    start_of_day = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
-    res = (
-        await db.table("research_reports")
-        .select("id", count="exact")
-        .eq("requested_by", requested_by)
-        .gte("created_at", start_of_day.isoformat())
-        .execute()
-    )
-    if res.count is not None:
-        return res.count
-    return len(res.data or [])
-
-
 async def get_job(db: AsyncClient, job_id: int) -> dict[str, Any] | None:
     res = (
         await db.table("research_reports")

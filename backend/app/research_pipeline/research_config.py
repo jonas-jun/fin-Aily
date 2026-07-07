@@ -67,9 +67,6 @@ class AppConfig:
     model_config: dict[str, Any]
     supabase_url: str | None
     supabase_service_role_key: str | None
-    app_env: str
-    debug: bool
-    cors_origins: list[str]
     research_report_ttl_hours: int
     research_job_timeout_minutes: int
     api_use_llm: bool
@@ -86,9 +83,6 @@ def load_config() -> AppConfig:
         model_config=load_model_config(),
         supabase_url=settings.supabase_url,
         supabase_service_role_key=settings.supabase_service_role_key,
-        app_env=settings.app_env,
-        debug=settings.debug,
-        cors_origins=settings.cors_origins,
         research_report_ttl_hours=settings.research_report_ttl_hours,
         research_job_timeout_minutes=settings.research_job_timeout_minutes,
         api_use_llm=settings.research_api_use_llm,

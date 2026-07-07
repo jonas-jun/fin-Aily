@@ -105,7 +105,6 @@ npm run dev
 GEMINI_API_KEY=your-gemini-api-key
 
 SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
 APP_ENV=development

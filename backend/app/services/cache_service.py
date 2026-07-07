@@ -73,12 +73,8 @@ async def save_digest_cache(
     db: AsyncClient,
     ticker_id: int,
     digest_ko: DigestResult,
-    digest_en: Optional[DigestResult] = None,
 ) -> None:
-    """
-    종합 요약 결과를 ticker_summaries에 저장한다.
-    한/영 요약을 단일 행에 저장하여 중복 캐시를 방지한다.
-    """
+    """종합 요약 결과를 ticker_summaries에 저장한다."""
     def to_json(points: list[SummaryPoint]) -> str:
         return json.dumps([p.model_dump() for p in points], ensure_ascii=False)
 
@@ -86,7 +82,7 @@ async def save_digest_cache(
         "ticker_id":       ticker_id,
         "article_ids":     digest_ko.article_ids,
         "summary_ko":      to_json(digest_ko.summary),
-        "summary_en":      to_json(digest_en.summary) if digest_en else None,
+        "summary_en":      None,
         "sentiment_score": float(digest_ko.sentiment_score),
         "sentiment_label": digest_ko.sentiment_label,
         "model_version":   digest_ko.model_version,
@@ -96,16 +92,3 @@ async def save_digest_cache(
 
     await db.table("ticker_summaries").insert(payload).execute()
     logger.info("캐시 저장: ticker_id=%d, count=%d", ticker_id, digest_ko.article_count)
-
-
-async def invalidate_cache(db: AsyncClient, ticker_id: int) -> int:
-    """특정 티커의 캐시를 전부 삭제한다. 수동 갱신/테스트용."""
-    res = (
-        await db.table("ticker_summaries")
-        .delete()
-        .eq("ticker_id", ticker_id)
-        .execute()
-    )
-    deleted = len(res.data) if res.data else 0
-    logger.info("캐시 무효화: ticker_id=%d, deleted=%d", ticker_id, deleted)
-    return deleted
