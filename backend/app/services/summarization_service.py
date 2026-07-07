@@ -80,11 +80,11 @@ def _build_prompt(
         trimmed = article.content[:MAX_CONTENT_CHARS]
         articles_block += f"[기사 {i}] 제목: {article.title}\n출처: {article.source}\n내용: {trimmed}\n\n"
 
-    # Market Pulse (MarketWatch) 전용 프롬프트 (사용자 요청 반영)
+    # Market Pulse (Yahoo Finance) 전용 프롬프트 (사용자 요청 반영)
     if symbol == "MARKET":
         return f"""너는 주식투자에 도움을 주는 똑똑한 비서야.
-아래 제공된 MarketWatch 페이지의 최신 {len(articles)}개의 뉴스를 각각 요약해줘.
-https://www.marketwatch.com
+아래 제공된 Yahoo Finance의 최신 {len(articles)}개의 뉴스를 각각 요약해줘.
+https://finance.yahoo.com
 
 ## 지시사항
 1. 각 기사마다 정확히 하나의 point로 요약하세요. 여러 문장이 필요하면 하나의 point 안에 모두 포함하세요.
