@@ -14,7 +14,6 @@ class SectionSpec:
     number: int
     title_ko: str
     prompt_file: str
-    data_keys: list[str]
     wave: int
     response_schema: dict[str, Any]
     renderer: Renderer
@@ -425,22 +424,20 @@ QA_SCHEMA = obj(
 
 
 SECTION_SPECS: list[SectionSpec] = [
-    SectionSpec(1, "Executive Summary", "p01_executive_summary.txt", ["wave1_takeaways"], 2, S1, render_executive),
+    SectionSpec(1, "Executive Summary", "p01_executive_summary.txt", 2, S1, render_executive),
     SectionSpec(
         2,
         "Business Structure & Narrative Shift",
         "p02_business_structure.txt",
-        ["segment_table", "item1_summaries", "mdna_summaries"],
         1,
         S2,
         render_business_structure,
     ),
-    SectionSpec(3, "Financial Quality & Margin", "p03_financial_quality.txt", [], 1, S3, render_financial_quality),
+    SectionSpec(3, "Financial Quality & Margin", "p03_financial_quality.txt", 1, S3, render_financial_quality),
     SectionSpec(
         4,
         "Filing Delta & Quality of Earnings",
         "p04_filing_delta.txt",
-        ["risk_summaries", "qoe_metrics"],
         1,
         S4,
         render_filing_delta,
@@ -449,7 +446,6 @@ SECTION_SPECS: list[SectionSpec] = [
         5,
         "Competitive Landscape & Customer Concentration",
         "p05_competitive_landscape.txt",
-        ["peer_table", "competition_excerpts"],
         1,
         S5,
         render_competitive,
@@ -458,7 +454,6 @@ SECTION_SPECS: list[SectionSpec] = [
         6,
         "Capital Allocation",
         "p06_capital_allocation.txt",
-        ["capital_allocation_table", "debt_detail"],
         1,
         S6,
         render_capital_allocation,
@@ -467,7 +462,6 @@ SECTION_SPECS: list[SectionSpec] = [
         7,
         "Earnings Call & Guidance",
         "p07_earnings_guidance.txt",
-        ["earnings_releases", "guidance_vs_actual"],
         1,
         S7,
         render_guidance,
@@ -476,7 +470,6 @@ SECTION_SPECS: list[SectionSpec] = [
         8,
         "Analyst Consensus & Valuation",
         "p08_consensus_valuation.txt",
-        ["consensus_table", "estimate_table", "valuation_band_table", "peer_table"],
         1,
         S8,
         render_valuation,
@@ -485,7 +478,6 @@ SECTION_SPECS: list[SectionSpec] = [
         9,
         "Technical & Key Risks",
         "p09_technical_risks.txt",
-        ["technical_table"],
         1,
         S9,
         render_risks,
@@ -494,7 +486,6 @@ SECTION_SPECS: list[SectionSpec] = [
         10,
         "Variant Perception & Final Assessment",
         "p10_variant_final.txt",
-        ["wave1_takeaways"],
         2,
         S10,
         render_variant,

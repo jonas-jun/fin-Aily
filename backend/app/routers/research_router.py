@@ -84,7 +84,7 @@ async def create_research_job(
         return _job_response(active, normalized, cached=False, include_report=False)
 
     # 인증 미도입 상태: 일일 한도는 사용자 식별(requested_by)에 의존하므로 비활성화.
-    # 재도입 시 get_current_user Depends + count_jobs_today 검사를 여기에 복구.
+    # 재도입 절차는 이슈 #8 참조.
     job = await research_cache_service.create_job(db, ticker_id=ticker["id"])
     background_tasks.add_task(run_research_job, int(job["id"]), int(ticker["id"]), normalized)
     return _job_response(job, normalized, cached=False, include_report=False)

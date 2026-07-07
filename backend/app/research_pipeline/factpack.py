@@ -125,7 +125,6 @@ def build_factpack(edgar: EdgarBundle, financials: FinancialBundle) -> FactPack:
     return FactPack(
         markdown=markdown,
         tables={
-            "financial_table": financial_table,
             "qoe_metrics": qoe_table,
             "capital_allocation_table": capital_table,
             "consensus_table": consensus_table,
