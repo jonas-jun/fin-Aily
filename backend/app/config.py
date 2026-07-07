@@ -53,16 +53,11 @@ class FeatureModelConfig:
     max_tokens: int
 
 
-_model_config: dict | None = None
-
-
+@lru_cache
 def _load_model_config() -> dict:
-    global _model_config
-    if _model_config is None:
-        config_path = Path(__file__).parent / "model_config.yaml"
-        with open(config_path) as f:
-            _model_config = yaml.safe_load(f)
-    return _model_config
+    config_path = Path(__file__).parent / "model_config.yaml"
+    with open(config_path) as f:
+        return yaml.safe_load(f)
 
 
 def get_feature_config(feature: str) -> FeatureModelConfig:
