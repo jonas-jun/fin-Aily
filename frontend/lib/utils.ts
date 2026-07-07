@@ -68,13 +68,3 @@ export function formatScore(score: number | null): string {
   if (score === null || score === undefined) return "–";
   return score >= 0 ? `+${score.toFixed(2)}` : score.toFixed(2);
 }
-
-/** trend → 한글 레이블 + 화살표 */
-export function trendLabel(trend: string | null): string {
-  switch (trend) {
-    case "improving":  return "↑ 개선";
-    case "worsening":  return "↓ 악화";
-    case "stable":     return "→ 보합";
-    default:           return "";
-  }
-}

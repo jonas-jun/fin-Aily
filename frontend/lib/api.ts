@@ -1,8 +1,7 @@
 /**
  * lib/api.ts
  * ──────────
- * 백엔드 API 호출 유틸리티.
- * 인증 토큰 자동 첨부, 에러 파싱 통합.
+ * 백엔드 API 호출 유틸리티. 에러 파싱 통합.
  */
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/v1";
@@ -44,14 +43,6 @@ export interface TickerResult {
   symbol: string;
   name: string;
   exchange?: string;
-}
-
-export interface UserProfile {
-  id: string;
-  email: string;
-  display_name: string | null;
-  preferred_language: "ko" | "en";
-  created_at: string;
 }
 
 // ── 심층 리서치 ─────────────────────────────────────────────────────────────────
@@ -99,17 +90,14 @@ export class ApiError extends Error {
 // ── 내부 fetch 래퍼 ───────────────────────────────────────────────────────────
 async function apiFetch<T>(
   path: string,
-  options: RequestInit & { token?: string } = {},
+  options: RequestInit = {},
 ): Promise<T> {
-  const { token, ...fetchOptions } = options;
-
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(fetchOptions.headers as Record<string, string>),
+    ...(options.headers as Record<string, string>),
   };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...fetchOptions, headers });
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
   if (!res.ok) {
     let code = "UNKNOWN_ERROR";
@@ -137,17 +125,6 @@ export const api = {
       apiFetch(`/news/${symbol}?lang=${lang}&limit=${limit}`),
     getMarketPulse: (lang = "ko"): Promise<NewsResponse> =>
       apiFetch(`/news/market-pulse?lang=${lang}`),
-  },
-
-  users: {
-    me: (token: string): Promise<UserProfile> =>
-      apiFetch("/users/me", { token }),
-
-    update: (
-      token: string,
-      body: { display_name?: string; preferred_language?: string },
-    ): Promise<UserProfile> =>
-      apiFetch("/users/me", { method: "PATCH", body: JSON.stringify(body), token }),
   },
 
   research: {
