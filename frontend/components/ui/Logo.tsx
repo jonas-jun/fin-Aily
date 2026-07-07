@@ -10,7 +10,7 @@ function TriangleI() {
       <span>ı</span>
       <svg
         viewBox="0 0 10 9"
-        className="absolute fill-[#22C55E]"
+        className="absolute fill-brand-green"
         style={{ width: "0.38em", left: "50%", transform: "translateX(-50%)", top: "0.06em" }}
         aria-hidden="true"
       >
@@ -34,12 +34,12 @@ export function Logo({ size = "sm" }: Props) {
       aria-label="fin-aily-us"
     >
       <span
-        className={`font-extrabold ${textCls} text-[#1E3A5F] tracking-tight leading-none`}
+        className={`font-extrabold ${textCls} text-brand-navy tracking-tight leading-none`}
       >
         f<TriangleI />n-a<TriangleI />ly
       </span>
       <span
-        className={`bg-[#22C55E] text-white font-extrabold ${badgeCls} leading-none`}
+        className={`bg-brand-green text-white font-extrabold ${badgeCls} leading-none`}
       >
         US
       </span>

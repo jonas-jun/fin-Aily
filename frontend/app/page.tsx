@@ -10,6 +10,24 @@ import { api, type NewsResponse } from "@/lib/api";
 
 type TabType = "brief" | "pulse" | "research";
 
+const TABS: { key: TabType; label: string; description: string }[] = [
+  {
+    key: "brief",
+    label: "Ticker Brief",
+    description: "Get 10 AI-powered news highlights for any ticker.",
+  },
+  {
+    key: "pulse",
+    label: "Market Pulse",
+    description: "Your AI assistant curates today's top market headlines.",
+  },
+  {
+    key: "research",
+    label: "Deep Lab",
+    description: "SEC 공시를 분석해 종목별 심층 리서치 리포트를 생성합니다.",
+  },
+];
+
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,46 +65,25 @@ function HomeContent() {
       <div className="text-center space-y-3">
         <Logo size="lg" />
         <p className="text-slate-500 text-sm sm:text-base max-w-md mx-auto leading-relaxed mt-4">
-          {activeTab === "brief"
-            ? "Get 10 AI-powered news highlights for any ticker."
-            : activeTab === "pulse"
-              ? "Your AI assistant curates today's top market headlines."
-              : "SEC 공시를 분석해 종목별 심층 리서치 리포트를 생성합니다."}
+          {TABS.find((tab) => tab.key === activeTab)?.description}
         </p>
       </div>
 
       {/* Tab navigation */}
       <div className="flex p-1.5 bg-slate-100 rounded-2xl w-full max-w-[340px] border border-slate-200/50 shadow-inner">
-        <button
-          onClick={() => setActiveTab("brief")}
-          className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-            activeTab === "brief"
-              ? "bg-white text-[#22C55E] shadow-md"
-              : "text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          Ticker Brief
-        </button>
-        <button
-          onClick={() => setActiveTab("pulse")}
-          className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-            activeTab === "pulse"
-              ? "bg-white text-[#22C55E] shadow-md"
-              : "text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          Market Pulse
-        </button>
-        <button
-          onClick={() => setActiveTab("research")}
-          className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-            activeTab === "research"
-              ? "bg-white text-[#22C55E] shadow-md"
-              : "text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          Deep Lab
-        </button>
+        {TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+              activeTab === key
+                ? "bg-white text-brand-green shadow-md"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Content */}
@@ -106,7 +103,7 @@ function HomeContent() {
               <div className="py-24 text-center space-y-5">
                 <div className="relative w-12 h-12 mx-auto">
                   <div className="absolute inset-0 border-4 border-green-100 rounded-full"></div>
-                  <div className="absolute inset-0 border-4 border-[#22C55E] rounded-full border-t-transparent animate-spin"></div>
+                  <div className="absolute inset-0 border-4 border-brand-green rounded-full border-t-transparent animate-spin"></div>
                 </div>
                 <p className="text-slate-500 font-medium animate-pulse">AI is analyzing the latest news...</p>
               </div>

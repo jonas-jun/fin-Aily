@@ -68,7 +68,7 @@ export function TickerSearch({ destination = "brief" }: TickerSearchProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by ticker (e.g. AAPL, TSLA)"
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 sm:py-2.5 text-base sm:text-sm shadow-sm focus:border-[#22C55E] focus:outline-none focus:ring-1 focus:ring-[#22C55E]"
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 sm:py-2.5 text-base sm:text-sm shadow-sm focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green"
           />
           {loading && (
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
@@ -78,7 +78,7 @@ export function TickerSearch({ destination = "brief" }: TickerSearchProps) {
         </div>
         <button
           type="submit"
-          className="rounded-lg bg-[#22C55E] px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium text-white hover:bg-green-600 active:bg-green-700 transition-colors"
+          className="rounded-lg bg-brand-green px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium text-white hover:bg-green-600 active:bg-green-700 transition-colors"
         >
           Search
         </button>

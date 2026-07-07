@@ -50,7 +50,7 @@ export function DigestCard({ digest, symbol, articles }: Props) {
         {summary.map((bullet, i) => (
           <li key={i} className="flex gap-2 text-sm text-slate-700 leading-relaxed">
             {symbol === "MARKET" ? (
-              <span className="mt-0.5 text-[#22C55E] font-semibold shrink-0 select-none w-5 text-center">{i + 1}</span>
+              <span className="mt-0.5 text-brand-green font-semibold shrink-0 select-none w-5 text-center">{i + 1}</span>
             ) : (
               <span className="mt-0.5 text-slate-400 shrink-0 select-none">•</span>
             )}
@@ -61,7 +61,7 @@ export function DigestCard({ digest, symbol, articles }: Props) {
                   href={articles[i].url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-slate-400 hover:text-[#22C55E] transition-colors truncate"
+                  className="text-xs text-slate-400 hover:text-brand-green transition-colors truncate"
                 >
                   {articles[i].title} ↗
                 </a>

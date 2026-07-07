@@ -42,9 +42,9 @@ export function ArticleList({ articles }: Props) {
                 rel="noopener noreferrer"
                 className="group block flex-1 min-w-0"
               >
-                <p className="text-sm font-medium text-slate-800 group-hover:text-[#22C55E] transition-colors line-clamp-2 leading-snug">
+                <p className="text-sm font-medium text-slate-800 group-hover:text-brand-green transition-colors line-clamp-2 leading-snug">
                   {article.title}
-                  <span className="ml-1.5 inline-block opacity-0 group-hover:opacity-60 transition-opacity text-[#22C55E] text-xs">↗</span>
+                  <span className="ml-1.5 inline-block opacity-0 group-hover:opacity-60 transition-opacity text-brand-green text-xs">↗</span>
                 </p>
                 <ArticleMeta source={article.source} publishedAt={article.published_at} />
               </a>
