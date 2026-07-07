@@ -7,7 +7,7 @@ AI 기술로 미국 주식 뉴스를 투자자 관점의 핵심 인사이트로 
 | | URL |
 |---|---|
 | Frontend | https://fin-aily-us.vercel.app |
-| Backend API | https://fin-aily-us-96426296927.asia-northeast1.run.app |
+| Backend API | https://fin-aily-us-437915204376.asia-northeast1.run.app |
 
 ---
 
@@ -23,8 +23,8 @@ AI 기술로 미국 주식 뉴스를 투자자 관점의 핵심 인사이트로 
 - Yahoo Finance RSS 기반으로 시장 전체 흐름 AI 요약
 - 별도 검색 없이 접속 즉시 현재 가장 뜨거운 경제 이슈 확인
 
-### Deep Research (심층 리서치)
-- 종목 페이지의 **심층 리서치** 탭(`/stock/{symbol}/research`)에서 SEC EDGAR 10-K/10-Q 공시 기반 애널리스트 수준 리포트 생성
+### Deep Lab (심층 리서치)
+- 홈의 **Deep Lab** 탭에서 티커 검색 → 리서치 페이지(`/stock/{symbol}/research`)로 진입, SEC EDGAR 10-K/10-Q 공시 기반 애널리스트 수준 리포트 생성
 - Map-Reduce LLM 파이프라인으로 대용량 공시를 섹션별 병렬 요약 후 단일 리포트로 합성 (목차·표·출처 포함)
 - 생성은 백그라운드 잡으로 진행되며 프론트가 5초 간격 폴링으로 진행 상태 표시 (약 2~4분)
 - 완료 리포트는 168시간 캐시. 현재 **개인 사용 모드**라 로그인 없이 누구나 조회·생성 가능 (인증·사용자별 한도는 추후 재도입 예정, 코드는 `backend/app/dependencies.py`의 `get_current_user`에 보존)
@@ -130,6 +130,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 NEXT_PUBLIC_API_URL=http://localhost:8000/v1
 ```
 
+백엔드 연동은 `NEXT_PUBLIC_API_URL` 하나면 충분하다 (**`/v1` 경로 포함**). 브리핑·심층 리서치 모두 같은 백엔드를 사용하므로 별도의 리서치 API URL 변수는 필요 없다.
+
 ---
 
 ## API
@@ -141,11 +143,18 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/v1
 | `GET` | `/v1/news/{symbol}` | 종목 최신 뉴스 수집 + AI 요약 |
 | `GET` | `/v1/news/market-pulse` | 시장 전체 뉴스 AI 요약 |
 | `GET` | `/v1/tickers/search?q={쿼리}` | 티커·종목명 자동완성 검색 (Rate Limit: 30회/분) |
-| `POST` | `/v1/research/{symbol}` | 심층 리서치 잡 시작 (캐시·진행 중 잡은 즉시 반환) |
+| `POST` | `/v1/research/{symbol}` | 심층 리서치 잡 시작 (캐시·진행 중 잡은 즉시 반환, `?force=true`로 강제 재생성) (Rate Limit: 5회/분/IP) |
 | `GET` | `/v1/research/{symbol}` | 최신 완료 리포트 조회 |
 | `GET` | `/v1/research/jobs/{job_id}` | 잡 상태·완료 리포트 폴링 |
 
 > 현재 개인 사용 모드로 `/v1/research/*`는 인증 없이 열려 있다. 인증 로직(`get_current_user`)은 `backend/app/dependencies.py`에 보존되어 있어 필요 시 각 라우터에 `Depends`로 다시 연결할 수 있다.
+
+---
+
+## 배포
+
+- **Frontend**: Vercel — main 브랜치 push 시 자동 배포. `NEXT_PUBLIC_API_URL`에 Cloud Run URL + `/v1` 설정 (값 변경 시 Redeploy 필요)
+- **Backend**: Google Cloud Run — `--no-cpu-throttling`(응답 반환 후에도 백그라운드 리서치 잡이 CPU를 계속 사용해야 함)과 `--min-instances 1`(유휴 시 인스턴스 회수로 실행 중인 잡이 중단되는 것 방지) 플래그가 필수다. 상세 절차는 `working/cloudrun.md` 참조
 
 ---
 
