@@ -10,43 +10,22 @@
  *   2. ArticleList — 기사 제목/링크 목록 (하단)
  */
 
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useParams } from "next/navigation";
 import { api, type NewsResponse } from "@/lib/api";
-import { DigestCard } from "@/components/news/DigestCard";
+import { TickerDigestCard } from "@/components/news/DigestCard";
 import { ArticleList } from "@/components/news/ArticleList";
 import { NewsPageSkeleton } from "@/components/ui/Skeletons";
 import { timeAgo } from "@/lib/utils";
+import { useAsync } from "@/lib/hooks/useAsync";
 
 export default function StockNewsPage() {
   const { symbol } = useParams<{ symbol: string }>();
   const upper = symbol?.toUpperCase() ?? "";
 
-  const [data, setData] = useState<NewsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!upper) return;
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await api.news.get(upper);
-        if (!cancelled) setData(res);
-      } catch (err: unknown) {
-        if (!cancelled)
-          setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    load();
-    return () => { cancelled = true; };
-  }, [upper]);
+  const loadNews = useCallback((): Promise<NewsResponse> => api.news.get(upper), [upper]);
+  const result = useAsync(loadNews, [upper], { enabled: Boolean(upper) });
+  const data = result.status === "success" ? result.data : null;
 
   return (
     <div>
@@ -64,19 +43,19 @@ export default function StockNewsPage() {
       </div>
 
       {/* 로딩 */}
-      {loading && <NewsPageSkeleton />}
+      {(result.status === "idle" || result.status === "loading") && <NewsPageSkeleton />}
 
       {/* 에러 */}
-      {!loading && error && (
+      {result.status === "error" && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {error}
+          {result.error}
         </div>
       )}
 
       {/* 정상 */}
-      {!loading && !error && data && (
+      {data && (
         <>
-          <DigestCard digest={data.digest} />
+          <TickerDigestCard digest={data.digest} />
           <ArticleList articles={data.articles} />
         </>
       )}

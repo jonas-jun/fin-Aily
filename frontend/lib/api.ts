@@ -69,6 +69,7 @@ export interface ResearchReport {
   symbol: string;
   status: string;
   report: string;
+  sections: Record<string, unknown> | null;
   sources: ResearchSource[] | null;
   model_version: string | null;
   created_at: string | null;
@@ -92,10 +93,8 @@ async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
+  const headers = new Headers(options.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
@@ -103,14 +102,29 @@ async function apiFetch<T>(
     let code = "UNKNOWN_ERROR";
     let message = `HTTP ${res.status}`;
     try {
-      const body = await res.json();
-      code = body?.detail?.code ?? body?.error?.code ?? code;
-      message = body?.detail?.message ?? body?.error?.message ?? message;
+      const body: unknown = await res.json();
+      code = errorField(body, "code") ?? code;
+      message = errorField(body, "message") ?? message;
     } catch {}
     throw new ApiError(code, message, res.status);
   }
 
   return res.json() as Promise<T>;
+}
+
+function errorField(body: unknown, field: "code" | "message"): string | null {
+  if (!isRecord(body)) return null;
+  for (const key of ["detail", "error"] as const) {
+    const container = body[key];
+    if (isRecord(container) && typeof container[field] === "string") {
+      return container[field];
+    }
+  }
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 // ── 공개 API ──────────────────────────────────────────────────────────────────

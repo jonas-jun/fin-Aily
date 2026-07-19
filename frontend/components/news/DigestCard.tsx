@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * components/news/DigestCard.tsx
  * ────────────────────────────────
@@ -8,20 +6,29 @@
  */
 
 import type { Digest, Article } from "@/lib/api";
+import { ExternalLink } from "@/components/ui/ExternalLink";
 import { sentimentBgClass, sentimentEmoji, sentimentTextColor, formatScore } from "@/lib/utils";
 
-interface Props {
+interface TickerProps {
   digest: Digest;
-  symbol?: string;
-  articles?: Article[];
 }
 
-export function DigestCard({ digest, symbol, articles }: Props) {
+interface MarketProps {
+  digest: Digest;
+  articles: Article[];
+}
+
+interface ListProps {
+  digest: Digest;
+  articles?: Article[];
+  marketPulse: boolean;
+}
+
+function DigestList({ digest, articles, marketPulse }: ListProps) {
   const { summary, sentiment, based_on_articles } = digest;
-  const showSentiment = symbol !== "MARKET";
 
   return (
-    <div className={`rounded-xl border p-5 mb-6 ${showSentiment ? sentimentBgClass(sentiment.label) : "bg-white"}`}>
+    <div className={`rounded-xl border p-5 mb-6 ${marketPulse ? "bg-white" : sentimentBgClass(sentiment.label)}`}>
       {/* 헤더 */}
       <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 flex-wrap">
@@ -32,7 +39,7 @@ export function DigestCard({ digest, symbol, articles }: Props) {
           </span>
         </div>
         {/* Sentiment 배지 */}
-        {showSentiment && (
+        {!marketPulse && (
           <div
             className={`flex items-center gap-1 text-sm font-semibold ${sentimentTextColor(sentiment.label)}`}
           >
@@ -49,22 +56,20 @@ export function DigestCard({ digest, symbol, articles }: Props) {
       <ul className="space-y-3">
         {summary.map((bullet, i) => (
           <li key={i} className="flex gap-2 text-sm text-slate-700 leading-relaxed">
-            {symbol === "MARKET" ? (
+            {marketPulse ? (
               <span className="mt-0.5 text-brand-green font-semibold shrink-0 select-none w-5 text-center">{i + 1}</span>
             ) : (
               <span className="mt-0.5 text-slate-400 shrink-0 select-none">•</span>
             )}
             <div className="flex flex-col gap-1 min-w-0">
               <span>{bullet.point}</span>
-              {symbol === "MARKET" && articles?.[i] ? (
-                <a
+              {marketPulse && articles?.[i] ? (
+                <ExternalLink
                   href={articles[i].url}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="text-xs text-slate-400 hover:text-brand-green transition-colors truncate"
                 >
                   {articles[i].title} ↗
-                </a>
+                </ExternalLink>
               ) : bullet.quote ? (
                 <blockquote className="border-l-2 border-slate-300 pl-2 text-xs text-slate-400 italic">
                   {bullet.quote}
@@ -76,4 +81,12 @@ export function DigestCard({ digest, symbol, articles }: Props) {
       </ul>
     </div>
   );
+}
+
+export function TickerDigestCard({ digest }: TickerProps) {
+  return <DigestList digest={digest} marketPulse={false} />;
+}
+
+export function MarketPulseCard({ digest, articles }: MarketProps) {
+  return <DigestList digest={digest} articles={articles} marketPulse />;
 }

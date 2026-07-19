@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * components/research/ReportView.tsx
  * ──────────────────────────────────
@@ -14,7 +12,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import type { ResearchReport } from "@/lib/api";
-import { timeAgo, formatDate } from "@/lib/utils";
+import { RelativeTime } from "@/components/ui/RelativeTime";
 
 interface Props {
   report: ResearchReport;
@@ -30,9 +28,7 @@ export function ReportView({ report }: Props) {
         {generatedAt && (
           <span>
             생성:{" "}
-            <time dateTime={generatedAt} title={formatDate(generatedAt)}>
-              {timeAgo(generatedAt)}
-            </time>
+            <RelativeTime value={generatedAt} />
           </span>
         )}
         {report.model_version && (

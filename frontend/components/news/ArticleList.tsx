@@ -1,20 +1,12 @@
-"use client";
-
 import type { Article } from "@/lib/api";
-import { timeAgo, formatDate } from "@/lib/utils";
+import { ExternalLink } from "@/components/ui/ExternalLink";
+import { RelativeTime } from "@/components/ui/RelativeTime";
 
 function ArticleMeta({ source, publishedAt }: { source: string; publishedAt: string }) {
-  const relative = timeAgo(publishedAt);
-  const exact    = formatDate(publishedAt);
   return (
     <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-400">
       <span>{source}</span>
-      {relative && (
-        <>
-          <span>·</span>
-          <time dateTime={publishedAt} title={exact}>{relative}</time>
-        </>
-      )}
+      <RelativeTime value={publishedAt} prefix={<span>·</span>} />
     </div>
   );
 }
@@ -36,10 +28,8 @@ export function ArticleList({ articles }: Props) {
         {articles.map((article) => (
           <li key={article.id} className="py-3 flex gap-2">
             {article.url ? (
-              <a
+              <ExternalLink
                 href={article.url}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="group block flex-1 min-w-0"
               >
                 <p className="text-sm font-medium text-slate-800 group-hover:text-brand-green transition-colors line-clamp-2 leading-snug">
@@ -47,7 +37,7 @@ export function ArticleList({ articles }: Props) {
                   <span className="ml-1.5 inline-block opacity-0 group-hover:opacity-60 transition-opacity text-brand-green text-xs">↗</span>
                 </p>
                 <ArticleMeta source={article.source} publishedAt={article.published_at} />
-              </a>
+              </ExternalLink>
             ) : (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-800 line-clamp-2 leading-snug">
