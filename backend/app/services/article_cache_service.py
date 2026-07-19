@@ -3,8 +3,6 @@ article_cache_service.py
 ────────────────────────
 뉴스 기사 DB 캐싱 서비스.
 - 1시간 TTL로 기사를 캐싱하여 외부 API 중복 호출을 방지한다.
-- ticker 조회/생성 헬퍼를 제공한다 (실제 종목은 app.services.ticker_service를
-  사용하고, get_or_create_ticker는 "MARKET" 같은 의사 티커 전용).
 """
 
 import logging
@@ -18,31 +16,6 @@ from app.services.news_service import RawArticle
 from app.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
-
-
-async def get_or_create_ticker(
-    db: AsyncClient,
-    symbol: str,
-    name: str = "",
-    exchange: Optional[str] = None,
-) -> int:
-    """ticker를 조회하고, 없으면 생성한 뒤 ticker_id를 반환한다."""
-    res = (
-        await db.table("tickers")
-        .select("id")
-        .eq("symbol", symbol)
-        .limit(1)
-        .execute()
-    )
-    if res.data:
-        return res.data[0]["id"]
-
-    insert_res = (
-        await db.table("tickers")
-        .insert({"symbol": symbol, "name": name or symbol, "exchange": exchange})
-        .execute()
-    )
-    return insert_res.data[0]["id"]
 
 
 async def get_cached_articles(

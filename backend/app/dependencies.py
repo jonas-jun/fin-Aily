@@ -24,6 +24,4 @@ async def create_db_client() -> AsyncClient:
     )
 
 
-async def get_db() -> AsyncClient:
-    """요청마다 Supabase AsyncClient 인스턴스를 생성하여 주입한다."""
-    return await create_db_client()
+get_db = create_db_client

@@ -6,6 +6,7 @@ yfinance → RSS(Yahoo Finance) 순으로 수집을 시도하며,
 시장 전체 뉴스를 위한 Yahoo Finance RSS 수집 기능을 제공한다.
 """
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -57,6 +58,11 @@ async def fetch_articles(symbol: str, limit: int = 10) -> list[RawArticle]:
 
 async def fetch_market_news(limit: int = 10) -> list[RawArticle]:
     """Yahoo Finance 종합 금융 RSS에서 최신 시장 뉴스를 수집한다."""
+    return await asyncio.to_thread(_fetch_market_news_sync, limit)
+
+
+def _fetch_market_news_sync(limit: int) -> list[RawArticle]:
+    """시장 뉴스의 동기 HTTP 요청과 본문 스크래핑을 worker thread에서 수행한다."""
     url = RSS_FEEDS["Yahoo_Finance"]
 
     articles = []
@@ -112,6 +118,11 @@ def _parse_pub_time(item: dict, content: dict) -> Optional[datetime]:
 
 async def _fetch_from_yfinance(symbol: str, limit: int) -> list[RawArticle]:
     """yfinance를 통한 뉴스 수집"""
+    return await asyncio.to_thread(_fetch_from_yfinance_sync, symbol, limit)
+
+
+def _fetch_from_yfinance_sync(symbol: str, limit: int) -> list[RawArticle]:
+    """yfinance 조회와 fallback 본문 스크래핑을 같은 worker thread에서 수행한다."""
     try:
         ticker = yf.Ticker(symbol)
         news_items = ticker.news or []
@@ -147,6 +158,11 @@ async def _fetch_from_yfinance(symbol: str, limit: int) -> list[RawArticle]:
 
 async def _fetch_from_rss(symbol: str, limit: int) -> list[RawArticle]:
     """RSS 피드를 통한 티커별 뉴스 필터링 수집"""
+    return await asyncio.to_thread(_fetch_from_rss_sync, symbol, limit)
+
+
+def _fetch_from_rss_sync(symbol: str, limit: int) -> list[RawArticle]:
+    """티커별 RSS의 동기 HTTP 요청을 worker thread에서 수행한다."""
     articles = []
     keyword = symbol.upper()
     for source_name, url in RSS_FEEDS.items():

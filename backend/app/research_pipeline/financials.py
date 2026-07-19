@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+import logging
 import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-from .edgar import CompanyIdentity
+from .edgar import ANNUAL_FORMS, CompanyIdentity
 from .utils import format_money_b_from_raw, format_money_m, format_number, format_pct, format_x
 
-
-ANNUAL_FORMS = {"10-K", "20-F", "40-F"}
+logger = logging.getLogger(__name__)
 
 DEFAULT_PEERS: dict[str, list[str]] = {
     "AAPL": ["MSFT", "GOOGL", "AMZN", "META", "NVDA"],
@@ -475,6 +475,7 @@ def fetch_yfinance_market_data(ticker: str) -> dict[str, Any]:
     try:
         import yfinance as yf  # type: ignore
     except Exception:
+        logger.warning("yfinance is unavailable; skipping market data", exc_info=True)
         return result(["확인 불가: yfinance 패키지가 설치되지 않아 시장 데이터 수집 생략"])
 
     try:
@@ -482,6 +483,7 @@ def fetch_yfinance_market_data(ticker: str) -> dict[str, Any]:
             ticker_obj = yf.Ticker(ticker)
             info = ticker_obj.info or {}
     except Exception as exc:
+        logger.warning("yfinance company info collection failed: ticker=%s", ticker, exc_info=True)
         return result([f"확인 불가: yfinance info 수집 실패 ({exc})"])
 
     profile = {
@@ -507,6 +509,7 @@ def fetch_yfinance_market_data(ticker: str) -> dict[str, Any]:
     try:
         estimate_rows = _estimate_rows(ticker_obj)
     except Exception as exc:
+        logger.warning("yfinance estimates collection failed: ticker=%s", ticker, exc_info=True)
         data_gaps.append(f"확인 불가: yfinance 애널리스트 추정치 수집 실패 ({exc})")
     if not estimate_rows:
         data_gaps.append("확인 불가: 애널리스트 상세 추정치(분기·연도별)")
@@ -518,6 +521,7 @@ def fetch_yfinance_market_data(ticker: str) -> dict[str, Any]:
         technical_rows = _technical_rows_from_history(history, benchmark_history)
         price_history = _price_history_points(history)
     except Exception as exc:
+        logger.warning("yfinance price history collection failed: ticker=%s", ticker, exc_info=True)
         data_gaps.append(f"확인 불가: yfinance 가격 히스토리 수집 실패 ({exc})")
 
     try:
@@ -527,6 +531,7 @@ def fetch_yfinance_market_data(ticker: str) -> dict[str, Any]:
         if not peer_rows:
             peer_rows = _industry_peer_rows(yf, ticker, info)
     except Exception:
+        logger.warning("yfinance peer collection failed: ticker=%s", ticker, exc_info=True)
         peer_rows = []
     if not peer_rows:
         data_gaps.append("확인 불가: yfinance에서 신뢰 가능한 피어 비교표를 제공하지 않음")
@@ -551,6 +556,7 @@ def _estimate_rows(ticker_obj: Any) -> list[dict[str, Any]]:
             with _suppress_yfinance_pandas4_warning():
                 frame = getattr(ticker_obj, name)
         except Exception:
+            logger.debug("yfinance estimate frame unavailable: frame=%s", name, exc_info=True)
             return []
         if frame is None or getattr(frame, "empty", True):
             return []
@@ -596,6 +602,7 @@ def _estimate_rows(ticker_obj: Any) -> list[dict[str, Any]]:
         with _suppress_yfinance_pandas4_warning():
             targets = ticker_obj.analyst_price_targets or {}
     except Exception:
+        logger.debug("yfinance analyst price targets unavailable", exc_info=True)
         targets = {}
     if targets.get("mean") is not None:
         rows.append(
@@ -624,6 +631,7 @@ def _suppress_yfinance_pandas4_warning() -> Any:
         try:
             from pandas.errors import Pandas4Warning  # type: ignore
         except Exception:
+            logger.debug("Pandas4Warning is unavailable; using Warning fallback", exc_info=True)
             Pandas4Warning = Warning  # type: ignore
         warnings.filterwarnings(
             "ignore",
@@ -753,6 +761,7 @@ def _industry_peer_rows(yf: Any, ticker: str, info: dict[str, Any]) -> list[dict
         with _suppress_yfinance_pandas4_warning():
             top = yf.Industry(industry_key).top_companies
     except Exception:
+        logger.debug("yfinance industry peers unavailable: industry=%s", industry_key, exc_info=True)
         return []
     if top is None or getattr(top, "empty", True):
         return []
@@ -782,6 +791,7 @@ def _peer_rows_from_symbols(yf: Any, symbols: list[str]) -> list[dict[str, Any]]
             with _suppress_yfinance_pandas4_warning():
                 info = yf.Ticker(peer).info or {}
         except Exception:
+            logger.debug("yfinance peer info unavailable: peer=%s", peer, exc_info=True)
             continue
         if not _is_sane_peer(info):
             continue

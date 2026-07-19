@@ -422,6 +422,15 @@ QA_SCHEMA = obj(
     }
 )
 
+GUIDANCE_EXTRACT_SCHEMA = obj(
+    {
+        "period_label": STR,
+        "revenue_actual": STR,
+        "eps_actual": STR,
+        "guidance_items": arr_obj({"metric": STR, "period": STR, "stated": STR}),
+    }
+)
+
 
 SECTION_SPECS: list[SectionSpec] = [
     SectionSpec(1, "Executive Summary", "p01_executive_summary.txt", 2, S1, render_executive),
@@ -510,4 +519,3 @@ def fallback_section(spec: SectionSpec, reason: str) -> dict[str, Any]:
         "key_takeaway": f"{spec.title_ko} 섹션은 자동 생성에 실패했다.",
         "data_gaps": [f"확인 불가: {reason}"],
     }
-

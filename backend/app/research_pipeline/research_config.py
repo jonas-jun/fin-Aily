@@ -37,13 +37,13 @@ def _resolve_path(value: str, default_root: Path) -> Path:
 
 
 @lru_cache
-def load_model_config(path: Path | None = None) -> dict[str, Any]:
-    config_path = path or PIPELINE_DIR / "model_config.yaml"
+def load_model_config() -> dict[str, Any]:
+    config_path = PIPELINE_DIR / "model_config.yaml"
     defaults: dict[str, Any] = {
         "defaults": {
-            "section_model": "gemini-2.5-flash",
-            "map_model": "gemini-2.5-flash-lite",
-            "qa_model": "gemini-2.5-flash",
+            "section_model": "gemini-3.1-flash-lite",
+            "map_model": "gemini-3.1-flash-lite",
+            "qa_model": "gemini-3.1-flash-lite",
             "temperature": 0.2,
             "max_concurrency": 6,
         },

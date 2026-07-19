@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -36,6 +36,20 @@ def parse_json_response(text: str) -> dict[str, Any]:
 @dataclass
 class GeminiClient:
     api_key: str | None
+    _client_instance: Any = field(default=None, init=False, repr=False)
+
+    def _client(self) -> tuple[Any, Any]:
+        if not self.api_key:
+            raise LLMUnavailable("GEMINI_API_KEY is not configured")
+        try:
+            from google import genai  # type: ignore
+            from google.genai import types  # type: ignore
+        except Exception as exc:
+            raise LLMUnavailable("google-genai is not installed") from exc
+
+        if self._client_instance is None:
+            self._client_instance = genai.Client(api_key=self.api_key)
+        return self._client_instance, types
 
     async def generate_json(
         self,
@@ -45,21 +59,19 @@ class GeminiClient:
         user_prompt: str,
         response_schema: dict[str, Any],
         temperature: float,
+        max_tokens: int | None = None,
     ) -> dict[str, Any]:
-        if not self.api_key:
-            raise LLMUnavailable("GEMINI_API_KEY is not configured")
-        try:
-            from google import genai  # type: ignore
-            from google.genai import types  # type: ignore
-        except Exception as exc:
-            raise LLMUnavailable("google-genai is not installed") from exc
-
-        client = genai.Client(api_key=self.api_key)
+        client, types = self._client()
+        config_options: dict[str, Any] = {
+            "system_instruction": system_prompt,
+            "response_mime_type": "application/json",
+            "response_schema": response_schema,
+            "temperature": temperature,
+        }
+        if max_tokens is not None:
+            config_options["max_output_tokens"] = max_tokens
         config = types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            response_mime_type="application/json",
-            response_schema=response_schema,
-            temperature=temperature,
+            **config_options,
         )
         response = await client.aio.models.generate_content(
             model=model,
@@ -81,20 +93,16 @@ class GeminiClient:
         system_prompt: str | None = None,
         user_prompt: str,
         temperature: float = 0.2,
+        max_tokens: int | None = None,
     ) -> str:
-        if not self.api_key:
-            raise LLMUnavailable("GEMINI_API_KEY is not configured")
-        try:
-            from google import genai  # type: ignore
-            from google.genai import types  # type: ignore
-        except Exception as exc:
-            raise LLMUnavailable("google-genai is not installed") from exc
-
-        client = genai.Client(api_key=self.api_key)
-        config = types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            temperature=temperature,
-        )
+        client, types = self._client()
+        config_options: dict[str, Any] = {
+            "system_instruction": system_prompt,
+            "temperature": temperature,
+        }
+        if max_tokens is not None:
+            config_options["max_output_tokens"] = max_tokens
+        config = types.GenerateContentConfig(**config_options)
         response = await client.aio.models.generate_content(
             model=model,
             contents=user_prompt,

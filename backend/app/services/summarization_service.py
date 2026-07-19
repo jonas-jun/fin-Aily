@@ -7,6 +7,9 @@ summarization_service.py
 
 import logging
 from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
+from string import Template
 from typing import Optional
 
 from pydantic import BaseModel
@@ -20,6 +23,7 @@ logger = logging.getLogger(__name__)
 MAX_ARTICLES        = 10
 MAX_CONTENT_CHARS   = 1024
 MAX_SUMMARY_BULLETS = 10
+PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 
 class ArticleInput(BaseModel):
     id: int
@@ -41,37 +45,12 @@ class DigestResult(BaseModel):
     created_at: datetime
 
 
-# ── API 응답 모델 ─────────────────────────────────────────────────────────────
-
-class SentimentOut(BaseModel):
-    score: float
-    label: str
-
-class DigestOut(BaseModel):
-    summary: list[SummaryPoint]
-    sentiment: SentimentOut
-    based_on_articles: int
-
-class ArticleOut(BaseModel):
-    id: int
-    title: str
-    source: str
-    url: str
-    published_at: str
-
-class NewsResponse(BaseModel):
-    symbol: str
-    company_name: str
-    last_updated: str
-    digest: DigestOut
-    articles: list[ArticleOut]
-
-
 def _build_prompt(
     symbol: str,
     company_name: str,
     articles: list[ArticleInput],
     lang: str = "ko",
+    feature: str = "ticker_brief",
 ) -> str:
     lang_instruction = "한국어로 작성하세요." if lang == "ko" else "Please write in English."
     
@@ -80,50 +59,21 @@ def _build_prompt(
         trimmed = article.content[:MAX_CONTENT_CHARS]
         articles_block += f"[기사 {i}] 제목: {article.title}\n출처: {article.source}\n내용: {trimmed}\n\n"
 
-    # Market Pulse (Yahoo Finance) 전용 프롬프트 (사용자 요청 반영)
-    if symbol == "MARKET":
-        return f"""너는 주식투자에 도움을 주는 똑똑한 비서야.
-아래 제공된 Yahoo Finance의 최신 {len(articles)}개의 뉴스를 각각 요약해줘.
-https://finance.yahoo.com
+    template_name = "market_pulse.txt" if feature == "market_pulse" else "ticker_brief.txt"
+    return _prompt_template(template_name).substitute(
+        article_count=len(articles),
+        articles_block=articles_block,
+        company_name=company_name,
+        lang_instruction=lang_instruction,
+        max_summary_bullets=MAX_SUMMARY_BULLETS,
+        symbol=symbol,
+    )
 
-## 지시사항
-1. 각 기사마다 정확히 하나의 point로 요약하세요. 여러 문장이 필요하면 하나의 point 안에 모두 포함하세요.
-2. 반드시 기사 수와 동일한 수의 point를 출력하세요. 기사 순서대로 요약하세요.
-3. 각 요약은 객관적이고 전문적인 톤을 유지하세요.
-4. {lang_instruction}
 
-## 응답 형식 (반드시 아래 JSON 포맷만 출력)
-{{
-  "summary": [
-    {{"point": "기사 1에 대한 요약 (여러 문장 가능)"}},
-    {{"point": "기사 2에 대한 요약 (여러 문장 가능)"}},
-    ...
-  ]
-}}
-
-## 뉴스 데이터
-{articles_block}"""
-
-    # 일반 티커 요약 프롬프트
-    return f"""당신은 금융 뉴스 분석 전문가입니다. {symbol}({company_name})에 관한 최신 뉴스 {len(articles)}개를 분석합니다.
-
-## 지시사항
-1. {symbol} 투자자에게 중요한 핵심 인사이트를 {MAX_SUMMARY_BULLETS}줄 이내로 요약하세요.
-2. 중복된 내용은 하나로 합치고 투자자 관점에서 중요한 순서로 나열하세요.
-3. 전체 뉴스 흐름에 대한 Sentiment Score (-1.0 ~ +1.0)를 산출하세요.
-4. {lang_instruction}
-
-## 응답 형식 (반드시 아래 JSON 포맷만 출력)
-{{
-  "summary": [
-    {{"point": "요약 문장", "quote": "근거 원문 (영어)"}}
-  ],
-  "sentiment_score": 0.0,
-  "sentiment_label": "Positive | Neutral | Negative"
-}}
-
-## 뉴스 데이터
-{articles_block}"""
+@lru_cache
+def _prompt_template(filename: str) -> Template:
+    text = (PROMPTS_DIR / filename).read_text(encoding="utf-8").rstrip("\n")
+    return Template(text)
 
 async def summarize_articles(
     symbol: str,
@@ -137,10 +87,14 @@ async def summarize_articles(
         raise ValueError("기사가 없습니다.")
 
     feat_config = get_feature_config(feature)
-    prompt = _build_prompt(symbol, company_name, articles[:MAX_ARTICLES], lang)
+    prompt = _build_prompt(symbol, company_name, articles[:MAX_ARTICLES], lang, feature)
 
     client = GeminiClient(api_key=api_key)
-    raw_text = await client.generate_text(model=feat_config.model, user_prompt=prompt)
+    raw_text = await client.generate_text(
+        model=feat_config.model,
+        user_prompt=prompt,
+        max_tokens=feat_config.max_tokens,
+    )
     model_version = feat_config.model
 
     try:

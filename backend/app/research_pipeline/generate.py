@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import logging
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -12,26 +15,15 @@ from .research_config import PROMPTS_DIR, AppConfig, load_config
 from .assemble import assemble_report
 from .edgar import EdgarBundle, FilingRecord, SecClient, fiscal_label
 from .factpack import FactPack, build_factpack
-from .financials import build_financial_bundle
+from .financials import FinancialBundle, build_financial_bundle
 from .sections import (
+    GUIDANCE_EXTRACT_SCHEMA,
     QA_SCHEMA,
     SECTION_SPECS,
-    STR,
     SectionSpec,
-    arr_obj,
     fallback_section,
     get_section,
-    obj,
     wave_sections,
-)
-
-GUIDANCE_EXTRACT_SCHEMA = obj(
-    {
-        "period_label": STR,
-        "revenue_actual": STR,
-        "eps_actual": STR,
-        "guidance_items": arr_obj({"metric": STR, "period": STR, "stated": STR}),
-    }
 )
 from .utils import (
     bullet_list,
@@ -42,6 +34,31 @@ from .utils import (
     trim_text,
     write_json,
 )
+
+logger = logging.getLogger(__name__)
+
+
+@lru_cache
+def _read_prompt(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def _collect_financial_inputs(ticker: str, config: AppConfig) -> tuple[EdgarBundle, FinancialBundle]:
+    """SEC/yfinance 기반 동기 수집 단계를 worker thread용 경계로 묶는다."""
+    sec = SecClient(config.edgar_user_agent, config.cache_dir / "sec")
+    edgar = sec.collect_company_bundle(ticker)
+    if edgar.identity.cik is None:
+        raise ValueError(f"Ticker not found on SEC EDGAR: {ticker} ({'; '.join(edgar.errors)})")
+
+    companyfacts = None
+    try:
+        companyfacts = sec.companyfacts(edgar.identity.cik)
+    except Exception as exc:
+        logger.warning("SEC companyfacts collection failed: ticker=%s", ticker, exc_info=True)
+        edgar.errors.append(f"SEC companyfacts 수집 실패: {exc}")
+
+    financials = build_financial_bundle(ticker, edgar.identity, companyfacts)
+    return edgar, financials
 
 
 @dataclass(frozen=True)
@@ -69,19 +86,7 @@ class ResearchPipeline:
         ensure_dir(output_path.parent)
         artifact_dir = output_path.parent / f"{output_path.stem}_artifacts"
 
-        sec = SecClient(self.config.edgar_user_agent, self.config.cache_dir / "sec")
-        edgar = sec.collect_company_bundle(ticker)
-        if edgar.identity.cik is None:
-            raise ValueError(f"Ticker not found on SEC EDGAR: {ticker} ({'; '.join(edgar.errors)})")
-
-        companyfacts = None
-        if edgar.identity.cik is not None:
-            try:
-                companyfacts = sec.companyfacts(edgar.identity.cik)
-            except Exception as exc:
-                edgar.errors.append(f"SEC companyfacts 수집 실패: {exc}")
-
-        financials = build_financial_bundle(ticker, edgar.identity, companyfacts)
+        edgar, financials = await asyncio.to_thread(_collect_financial_inputs, ticker, self.config)
         factpack = build_factpack(edgar, financials)
         summaries = await self._build_summaries(ticker, edgar, options.use_llm)
         guidance_vs_actual = await self._build_guidance_table(ticker, edgar, options.use_llm)
@@ -295,6 +300,13 @@ class ResearchPipeline:
                 )
                 bullets = _lines_to_bullets(response)
             except Exception as exc:
+                logger.warning(
+                    "Filing summary generation failed: ticker=%s accession=%s group=%s",
+                    ticker,
+                    accession_no,
+                    group,
+                    exc_info=True,
+                )
                 bullets = [f"LLM 요약 실패: {exc}", *simple_summary(text, 5)]
         else:
             bullets = simple_summary(text, 8)
@@ -405,6 +417,12 @@ class ResearchPipeline:
                 temperature=temperature,
             )
         except Exception:
+            logger.warning(
+                "Earnings guidance extraction failed: ticker=%s accession=%s",
+                ticker,
+                filing.accession_no,
+                exc_info=True,
+            )
             return None
         if not isinstance(payload, dict):
             return None
@@ -439,6 +457,7 @@ class ResearchPipeline:
                 payload.setdefault("key_takeaway", "")
             return spec, payload
         except Exception as exc:
+            logger.warning("Section generation failed: section=%s", spec.number, exc_info=True)
             return spec, fallback_section(spec, str(exc))
 
     async def _run_qa(self, company_name: str, ticker: str, report_md: str) -> list[dict[str, Any]]:
@@ -458,6 +477,7 @@ class ResearchPipeline:
             issues = response.get("issues", [])
             return issues if isinstance(issues, list) else []
         except Exception as exc:
+            logger.warning("Research QA failed: ticker=%s", ticker, exc_info=True)
             return [{"type": "QA 실패", "location": "전체", "description": str(exc)}]
 
     def _model_options(self, key: str) -> tuple[str, float]:
@@ -465,17 +485,17 @@ class ResearchPipeline:
         sections = self.config.model_config.get("sections", {})
         override = sections.get(key, {})
         if key == "map":
-            model = defaults.get("map_model", "gemini-2.5-flash-lite")
+            model = defaults["map_model"]
         elif key == "qa":
-            model = defaults.get("qa_model", "gemini-2.5-flash")
+            model = defaults["qa_model"]
         else:
-            model = defaults.get("section_model", "gemini-2.5-flash")
+            model = defaults["section_model"]
         model = override.get("model", model)
         temperature = override.get("temperature", defaults.get("temperature", 0.2))
         return str(model), float(temperature)
 
     def _prompt(self, filename: str) -> str:
-        return (self.prompts_dir / filename).read_text(encoding="utf-8")
+        return _read_prompt(self.prompts_dir / filename)
 
     def _load_existing_sections(self, artifact_dir: Path) -> dict[int, dict[str, Any]]:
         sections_dir = artifact_dir / "sections"
@@ -487,6 +507,7 @@ class ResearchPipeline:
                 number = int(path.stem.split("_", 1)[0])
                 loaded[number] = read_json(path)
             except Exception:
+                logger.debug("Skipping invalid section artifact: path=%s", path, exc_info=True)
                 continue
         return loaded
 
@@ -579,4 +600,3 @@ def _hash_text(text: str) -> str:
 
 def _slug(value: str) -> str:
     return "".join(char.lower() if char.isalnum() else "_" for char in value).strip("_")
-
