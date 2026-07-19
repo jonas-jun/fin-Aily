@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 import urllib.error
@@ -13,11 +14,12 @@ from typing import Any
 
 from .utils import compact_whitespace, ensure_dir, read_json, trim_text, write_json
 
+logger = logging.getLogger(__name__)
 
 SEC_FILES_BASE = "https://www.sec.gov/files"
 SEC_DATA_BASE = "https://data.sec.gov"
 SEC_ARCHIVES_BASE = "https://www.sec.gov/Archives/edgar/data"
-ANNUAL_FORMS = {"10-K", "20-F"}
+ANNUAL_FORMS = {"10-K", "20-F", "40-F"}
 
 
 @dataclass
@@ -219,6 +221,12 @@ class SecClient:
                 ttl_seconds=None,
             )
         except Exception:
+            logger.debug(
+                "SEC filing index unavailable: cik=%s accession=%s",
+                cik,
+                accession_no,
+                exc_info=True,
+            )
             return []
         items = payload.get("directory", {}).get("item", [])
         return [str(entry.get("name", "")) for entry in items if entry.get("name")]
@@ -238,7 +246,12 @@ class SecClient:
                 )
                 texts.append(html_to_text(raw))
             except Exception:
-                pass
+                logger.warning(
+                    "SEC exhibit download failed; falling back to primary document: cik=%s accession=%s",
+                    cik,
+                    filing.accession_no,
+                    exc_info=True,
+                )
         if not texts:
             texts.append(self.download_filing_text(cik, filing))
         return "\n\n".join(texts)
@@ -253,6 +266,12 @@ class SecClient:
                 ttl_seconds=None,
             )
         except Exception:
+            logger.debug(
+                "SEC FilingSummary unavailable: cik=%s accession=%s",
+                cik,
+                filing.accession_no,
+                exc_info=True,
+            )
             return {}
         reports = _parse_filing_summary(summary_xml)
         tables: dict[str, str] = {}
@@ -270,6 +289,13 @@ class SecClient:
                         ttl_seconds=None,
                     )
                 except Exception:
+                    logger.debug(
+                        "SEC XBRL report download failed: cik=%s accession=%s file=%s",
+                        cik,
+                        filing.accession_no,
+                        html_file,
+                        exc_info=True,
+                    )
                     continue
                 table_md = _r_report_to_markdown(raw)
                 if table_md:
@@ -292,6 +318,7 @@ class SecClient:
         try:
             identity = self.resolve_ticker(ticker)
         except Exception as exc:
+            logger.warning("SEC ticker resolution failed: ticker=%s", ticker, exc_info=True)
             fallback = CompanyIdentity(ticker=ticker.upper().strip(), cik=None, company_name=ticker.upper().strip())
             return EdgarBundle(fallback, [], [], [], [], [str(exc)])
 
@@ -306,11 +333,23 @@ class SecClient:
                 filing.items = extract_annual_items(text)
                 filing.text_excerpt = trim_text(text, 30000)
             except Exception as exc:
+                logger.warning(
+                    "SEC annual filing download failed: ticker=%s accession=%s",
+                    ticker,
+                    filing.accession_no,
+                    exc_info=True,
+                )
                 errors.append(f"{filing.form_type} {filing.accession_no} download failed: {exc}")
             try:
                 categories = XBRL_REPORT_CATEGORIES if index < 2 else XBRL_REPORT_CATEGORIES_OLDER
                 filing.xbrl_tables = self.fetch_xbrl_report_tables(identity.cik, filing, categories)
             except Exception as exc:
+                logger.warning(
+                    "SEC XBRL table collection failed: ticker=%s accession=%s",
+                    ticker,
+                    filing.accession_no,
+                    exc_info=True,
+                )
                 errors.append(f"{filing.form_type} {filing.accession_no} XBRL report tables failed: {exc}")
 
         for filing in quarters:
@@ -319,6 +358,12 @@ class SecClient:
                 filing.items = extract_quarterly_items(text)
                 filing.text_excerpt = trim_text(text, 20000)
             except Exception as exc:
+                logger.warning(
+                    "SEC quarterly filing download failed: ticker=%s accession=%s",
+                    ticker,
+                    filing.accession_no,
+                    exc_info=True,
+                )
                 errors.append(f"{filing.form_type} {filing.accession_no} download failed: {exc}")
 
         for filing in eight_ks:
@@ -326,6 +371,12 @@ class SecClient:
                 text = self.download_press_release_text(identity.cik, filing)
                 filing.text_excerpt = trim_text(text, 50000)
             except Exception as exc:
+                logger.warning(
+                    "SEC earnings release download failed: ticker=%s accession=%s",
+                    ticker,
+                    filing.accession_no,
+                    exc_info=True,
+                )
                 errors.append(f"{filing.form_type} {filing.accession_no} download failed: {exc}")
 
         sources = []
@@ -381,6 +432,7 @@ def _r_report_to_markdown(raw_html: str, max_rows: int = 40, max_cols: int = 10)
     try:
         from bs4 import BeautifulSoup  # type: ignore
     except Exception:
+        logger.debug("BeautifulSoup unavailable for XBRL report parsing", exc_info=True)
         return ""
     soup = BeautifulSoup(raw_html, "html.parser")
     table = soup.find("table")
@@ -417,6 +469,7 @@ def html_to_text(raw: str) -> str:
             tag.decompose()
         text = soup.get_text("\n")
     except Exception:
+        logger.debug("HTML parser failed; using regex fallback", exc_info=True)
         text = re.sub(r"<script.*?</script>", " ", raw, flags=re.I | re.S)
         text = re.sub(r"<style.*?</style>", " ", text, flags=re.I | re.S)
         text = re.sub(r"<[^>]+>", "\n", text)

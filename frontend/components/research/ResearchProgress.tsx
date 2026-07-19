@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface Props {
   /** 서버가 반환한 진행 문구 (예: "리포트 생성 중") */
@@ -34,10 +35,7 @@ export function ResearchProgress({ progress, startedAt }: Props) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-6 py-12 text-center">
-      <span
-        className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-brand-green"
-        aria-hidden
-      />
+      <Spinner className="border-slate-200" />
       <p className="text-sm font-medium text-slate-700">
         {progress || "리포트 생성 중"}
       </p>

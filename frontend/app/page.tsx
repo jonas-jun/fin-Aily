@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TickerSearch } from "@/components/ui/TickerSearch";
-import { DigestCard } from "@/components/news/DigestCard";
+import { MarketPulseCard } from "@/components/news/DigestCard";
 import { DeepLabLanding } from "@/components/research/DeepLabLanding";
 import { Logo } from "@/components/ui/Logo";
 import { api, type NewsResponse } from "@/lib/api";
+import { Spinner } from "@/components/ui/Spinner";
+import { useAsync } from "@/lib/hooks/useAsync";
 
 type TabType = "brief" | "pulse" | "research";
 
@@ -35,29 +37,15 @@ function HomeContent() {
   const activeTab: TabType =
     tabParam === "pulse" ? "pulse" : tabParam === "research" ? "research" : "brief";
 
-  const [marketData, setMarketData] = useState<NewsResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const loadMarketPulse = useCallback((): Promise<NewsResponse> => api.news.getMarketPulse(), []);
+  const market = useAsync(loadMarketPulse, [], {
+    enabled: activeTab === "pulse",
+    retainSuccess: true,
+  });
 
   const setActiveTab = (tab: TabType) => {
     router.push(tab === "brief" ? "/" : `/?tab=${tab}`);
   };
-
-  useEffect(() => {
-    if (activeTab === "pulse" && !marketData) {
-      const loadMarketPulse = async () => {
-        setLoading(true);
-        try {
-          const data = await api.news.getMarketPulse();
-          setMarketData(data);
-        } catch (error) {
-          console.error("Market Pulse load error:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      loadMarketPulse();
-    }
-  }, [activeTab, marketData]);
 
   return (
     <div className="flex min-h-[70vh] flex-col items-center pt-16 md:pt-24 gap-10 px-4">
@@ -99,19 +87,16 @@ function HomeContent() {
           </div>
         ) : (
           <div className="animate-in fade-in slide-in-from-bottom-4 space-y-10">
-            {loading ? (
+            {market.status === "loading" || market.status === "idle" ? (
               <div className="py-24 text-center space-y-5">
-                <div className="relative w-12 h-12 mx-auto">
-                  <div className="absolute inset-0 border-4 border-green-100 rounded-full"></div>
-                  <div className="absolute inset-0 border-4 border-brand-green rounded-full border-t-transparent animate-spin"></div>
-                </div>
+                <Spinner size="lg" />
                 <p className="text-slate-500 font-medium animate-pulse">AI is analyzing the latest news...</p>
               </div>
-            ) : marketData ? (
-              <DigestCard digest={marketData.digest} symbol="MARKET" articles={marketData.articles} />
+            ) : market.status === "success" ? (
+              <MarketPulseCard digest={market.data.digest} articles={market.data.articles} />
             ) : (
               <div className="py-20 border-2 border-dashed border-slate-200 rounded-3xl text-center">
-                <p className="text-slate-400">Unable to load market pulse. Please try again.</p>
+                <p className="text-slate-400">{market.error || "Unable to load market pulse. Please try again."}</p>
               </div>
             )}
           </div>

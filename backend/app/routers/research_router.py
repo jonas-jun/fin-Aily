@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel, Field
 from supabase import AsyncClient
 
 from app.dependencies import create_db_client, get_db
@@ -15,39 +14,12 @@ from app.research_pipeline.edgar import SecClient
 from app.research_pipeline.generate import GenerateOptions, ResearchPipeline
 from app.research_pipeline.research_config import AppConfig, load_config
 from app.research_pipeline.utils import ensure_dir
+from app.schemas.research import ErrorBody, LatestReportResponse, ResearchJobResponse
 from app.services import research_cache_service, ticker_service
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/research", tags=["research"])
-
-
-class ResearchJobResponse(BaseModel):
-    job_id: int
-    symbol: str
-    status: str
-    progress: str | None = None
-    cached: bool = False
-    report: str | None = None
-    error: str | None = None
-    created_at: str | None = None
-    completed_at: str | None = None
-
-
-class LatestReportResponse(BaseModel):
-    symbol: str
-    status: str = "completed"
-    report: str
-    sections: dict[str, Any] | None = None
-    sources: list[dict[str, Any]] | None = None
-    model_version: str | None = None
-    created_at: str | None = None
-    completed_at: str | None = None
-
-
-class ErrorBody(BaseModel):
-    code: str = Field(..., examples=["REPORT_NOT_FOUND"])
-    message: str
 
 
 SYMBOL_PATTERN = re.compile(r"^[A-Z0-9][A-Z0-9.\-]{0,19}$")
@@ -240,4 +212,3 @@ def _job_response(
         created_at=row.get("created_at"),
         completed_at=row.get("completed_at"),
     )
-

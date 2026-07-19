@@ -6,8 +6,7 @@ yfinance 프로필(회사명·거래소·섹터) 조회 후 DB에 upsert하며, 
 insert 실패를 select 재시도로 흡수한다.
 
 시장 전체를 나타내는 의사(疑似) 티커(예: "MARKET")는 실제 종목이 아니므로
-yfinance 조회가 무의미하다 — 이 경우 article_cache_service.get_or_create_ticker()를
-직접 사용한다.
+``lookup_profile=False``로 yfinance 조회를 생략한다.
 """
 
 from __future__ import annotations
@@ -21,8 +20,13 @@ from supabase import AsyncClient
 logger = logging.getLogger(__name__)
 
 
-async def ensure_ticker(db: AsyncClient, symbol: str) -> dict[str, Any]:
-    """실제 종목 티커를 조회하고, 없으면 yfinance 프로필과 함께 생성한다."""
+async def ensure_ticker(
+    db: AsyncClient,
+    symbol: str,
+    *,
+    lookup_profile: bool = True,
+) -> dict[str, Any]:
+    """티커를 조회하고, 없으면 선택적으로 yfinance 프로필과 함께 생성한다."""
     normalized = symbol.upper().strip()
     existing = (
         await db.table("tickers")
@@ -34,7 +38,11 @@ async def ensure_ticker(db: AsyncClient, symbol: str) -> dict[str, Any]:
     if existing.data:
         return existing.data[0]
 
-    profile = await asyncio.to_thread(_lookup_ticker_profile, normalized)
+    profile = (
+        await asyncio.to_thread(_lookup_ticker_profile, normalized)
+        if lookup_profile
+        else {"name": normalized, "exchange": None, "sector": None}
+    )
     payload = {
         "symbol": normalized,
         "name": profile.get("name") or normalized,

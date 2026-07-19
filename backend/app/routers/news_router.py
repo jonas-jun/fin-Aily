@@ -13,19 +13,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.config import get_settings
 from app.dependencies import get_db
+from app.schemas.news import ArticleOut, DigestOut, NewsResponse, SentimentOut
 from app.services.article_cache_service import (
     get_cached_articles,
-    get_or_create_ticker,
     save_articles,
 )
 from app.services.cache_service import get_cached_digest, save_digest_cache
 from app.services.news_service import RawArticle, fetch_articles, fetch_market_news
 from app.services.summarization_service import (
     ArticleInput,
-    ArticleOut,
-    DigestOut,
-    NewsResponse,
-    SentimentOut,
     summarize_articles,
 )
 from app.services.ticker_service import ensure_ticker
@@ -145,7 +141,8 @@ async def get_market_pulse(
     Yahoo Finance의 최신 뉴스 10개를 가져와 '똑똑한 비서' 페르소나로 요약한다.
     1시간 이내에 수집된 기사가 있으면 DB 캐시를 재사용한다.
     """
-    ticker_id = await get_or_create_ticker(db, "MARKET", "Yahoo Finance Top Stories")
+    ticker = await ensure_ticker(db, "MARKET", lookup_profile=False)
+    ticker_id = ticker["id"]
 
     raw_articles = await _get_or_fetch_articles(
         db, ticker_id, lambda: fetch_market_news(limit=10), limit=10
